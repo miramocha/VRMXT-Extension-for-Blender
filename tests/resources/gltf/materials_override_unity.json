@@ -1,0 +1,34 @@
+{
+  "extensionsUsed": [
+    "VRMC_vrm",
+    "VRMC_materials_mtoon",
+    "VRMXT_materials_override"
+  ],
+  "materials": [
+    {
+      "name": "Face",
+      "extensions": {
+        "VRMXT_materials_override": {
+          "specVersion": "1.0",
+          "overrides": [
+            {
+              "engine": "unity",
+              "material": {
+                "kind": "shader",
+                "name": "Example/SkinToon",
+                "variant": "urp"
+              },
+              "bindings": [
+                {
+                  "source": "shadeColorFactor",
+                  "target": "_ShadeColor",
+                  "targetType": "vector"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

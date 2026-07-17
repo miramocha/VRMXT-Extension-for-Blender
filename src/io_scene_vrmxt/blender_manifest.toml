@@ -1,0 +1,22 @@
+schema_version = "1.0.0"
+
+id = "vrmxt"
+version = "0.1.0"
+
+name = "VRMXT Extensions"
+tagline = "Optional VRMXT_* authoring for Extended VRM"
+maintainer = "Mira Luna"
+type = "add-on"
+
+website = "https://github.com/miramocha/VRMXT-Extension-for-Blender"
+
+tags = ["Import-Export", "Material"]
+
+blender_version_min = "4.2.0"
+blender_version_max = "5.3.0"
+
+license = ["SPDX:MIT"]
+
+copyright = [
+  "2026 Mira Luna",
+]

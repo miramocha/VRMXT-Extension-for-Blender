@@ -1,0 +1,26 @@
+[project]
+name = "io-scene-vrmxt"
+version = "0.1.0"
+description = "Optional Blender extension for VRMXT_* Extended VRM features"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Mira Luna" }]
+
+[tool.ruff]
+line-length = 88
+target-version = "py39"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/io_scene_vrmxt/__init__.py" = ["E402"]
+
+[tool.pyright]
+pythonVersion = "3.9"
+typeCheckingMode = "basic"
+include = ["src", "tests"]
+extraPaths = ["src"]
+reportMissingImports = "warning"
