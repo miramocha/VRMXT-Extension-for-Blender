@@ -9,8 +9,11 @@ from unittest import mock
 
 from io_scene_vrmxt.vfx.export_hook import resolve_node_index
 from io_scene_vrmxt.vfx.geonodes_preview import (
+    ARMATURE_PREVIEW_ID_PROP,
     OBJECT_NAME_PREFIX,
+    PREVIEW_ARMATURE_PROP,
     PREVIEW_CUSTOM_PROP,
+    _preview_belongs_to_armature,
     clear_vfx_preview,
     is_preview_object,
     preview_object_name,
@@ -21,10 +24,18 @@ from io_scene_vrmxt.vfx.property_group import ATTACHMENT_TYPE_OBJECT
 
 class TestVfxPreviewNaming(unittest.TestCase):
     def test_preview_object_name_sanitizes(self) -> None:
-        self.assertEqual(preview_object_name("Hand Spark!", 0), "VRMXT_vfx_Hand_Spark")
+        self.assertEqual(
+            preview_object_name("Hand Spark!", 0),
+            "VRMXT_vfx_Hand_Spark.000",
+        )
         self.assertEqual(
             preview_object_name("", 2),
             f"{OBJECT_NAME_PREFIX}Emitter.002",
+        )
+        # Same label, different indices → distinct object names.
+        self.assertNotEqual(
+            preview_object_name("Spark", 0),
+            preview_object_name("Spark", 1),
         )
 
     def test_is_preview_object_reads_custom_prop(self) -> None:
@@ -39,15 +50,43 @@ class TestVfxPreviewNaming(unittest.TestCase):
         self.assertFalse(is_preview_object(None))
 
 
+class TestVfxPreviewOwnership(unittest.TestCase):
+    def test_preview_belongs_to_armature_matches_uuid_and_legacy_name(self) -> None:
+        armature = SimpleNamespace(
+            name="Arm.001",
+            get=lambda key, default=None: (
+                "uuid-arm" if key == ARMATURE_PREVIEW_ID_PROP else default
+            ),
+        )
+
+        def make_helper(owner: str):
+            return SimpleNamespace(
+                parent=None,
+                get=lambda key, default=None: (
+                    owner if key == PREVIEW_ARMATURE_PROP else default
+                ),
+            )
+
+        self.assertTrue(
+            _preview_belongs_to_armature(make_helper("uuid-arm"), armature, "uuid-arm")
+        )
+        self.assertTrue(
+            _preview_belongs_to_armature(make_helper("Arm.001"), armature, "uuid-arm")
+        )
+        self.assertFalse(
+            _preview_belongs_to_armature(make_helper("other"), armature, "uuid-arm")
+        )
+
+
 class TestVfxPreviewExportIsolation(unittest.TestCase):
     def test_resolve_node_index_rejects_preview_object_name(self) -> None:
         self.assertIsNone(
             resolve_node_index(
                 ATTACHMENT_TYPE_OBJECT,
                 "",
-                "VRMXT_vfx_HandSpark",
+                "VRMXT_vfx_HandSpark.000",
                 {},
-                {"VRMXT_vfx_HandSpark": 9},
+                {"VRMXT_vfx_HandSpark.000": 9},
             )
         )
 

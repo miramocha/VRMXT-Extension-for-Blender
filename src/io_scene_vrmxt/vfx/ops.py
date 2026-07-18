@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import ClassVar
 
 try:
@@ -11,6 +12,8 @@ try:
     from bpy.types import Armature, Context, Operator
 except ImportError:  # pragma: no cover
     bpy = None  # type: ignore[assignment]
+
+logger = logging.getLogger(__name__)
 
 
 def _active_armature_object(context: object):
@@ -71,7 +74,10 @@ def _rebuild_preview_safe(context: object) -> None:
     try:
         rebuild_vfx_preview(armature, context=context)
     except Exception:  # noqa: BLE001
-        pass
+        logger.exception(
+            "VRMXT VFX preview rebuild failed for armature %r",
+            getattr(armature, "name", "?"),
+        )
 
 
 def _default_attachment_bone(context: object) -> str:

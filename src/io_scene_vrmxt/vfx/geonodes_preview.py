@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import re
+import uuid
 from typing import Any
 
 from .property_group import ATTACHMENT_TYPE_BONE, ATTACHMENT_TYPE_OBJECT
@@ -18,6 +19,9 @@ logger = logging.getLogger(__name__)
 NODE_GROUP_NAME = "VRMXT_Particle"
 NODE_GROUP_VERSION = 6
 PREVIEW_CUSTOM_PROP = "vrmxt_vfx_preview"
+# Stable per-armature id (UUID). Helpers store this value — not the armature name —
+# so rename does not orphan previews.
+ARMATURE_PREVIEW_ID_PROP = "vrmxt_vfx_id"
 PREVIEW_ARMATURE_PROP = "vrmxt_vfx_preview_armature"
 PREVIEW_EMITTER_PROP = "vrmxt_vfx_preview_emitter"
 OBJECT_NAME_PREFIX = "VRMXT_vfx_"
@@ -48,28 +52,75 @@ def is_preview_object(obj: Any) -> bool:
 
 
 def preview_object_name(emitter_name: str, index: int) -> str:
-    label = (emitter_name or "").strip() or f"Emitter.{index:03d}"
-    safe = _SAFE_NAME_RE.sub("_", label).strip("._") or f"Emitter.{index:03d}"
-    return f"{OBJECT_NAME_PREFIX}{safe}"
+    """Stable unique Empty name: sanitized label plus emitter index."""
+    label = (emitter_name or "").strip() or "Emitter"
+    safe = _SAFE_NAME_RE.sub("_", label).strip("._") or "Emitter"
+    return f"{OBJECT_NAME_PREFIX}{safe}.{index:03d}"
+
+
+def _safe_token(value: str, fallback: str) -> str:
+    safe = _SAFE_NAME_RE.sub("_", (value or "").strip()).strip("._")
+    return safe or fallback
+
+
+def _ensure_armature_preview_id(armature_object: Any) -> str:
+    """Return a stable UUID on the armature used to own preview helpers."""
+    existing = None
+    try:
+        existing = armature_object.get(ARMATURE_PREVIEW_ID_PROP)
+    except (AttributeError, TypeError, KeyError):
+        existing = None
+    if existing:
+        return str(existing)
+    new_id = str(uuid.uuid4())
+    try:
+        armature_object[ARMATURE_PREVIEW_ID_PROP] = new_id
+    except (AttributeError, TypeError, KeyError):
+        pass
+    return new_id
+
+
+def _preview_belongs_to_armature(obj: Any, armature_object: Any, armature_id: str) -> bool:
+    owner = ""
+    try:
+        owner = str(obj.get(PREVIEW_ARMATURE_PROP, "") or "")
+    except (AttributeError, TypeError, KeyError):
+        owner = ""
+    if owner:
+        if owner == armature_id:
+            return True
+        # Legacy helpers tagged with armature name before UUID ownership.
+        if owner == getattr(armature_object, "name", ""):
+            return True
+        return False
+    # Untagged parent chain fallback (legacy).
+    if obj.parent == armature_object:
+        return True
+    parent = obj.parent
+    if parent is not None and is_preview_object(parent):
+        return _preview_belongs_to_armature(parent, armature_object, armature_id)
+    return False
 
 
 def ensure_particle_node_group() -> Any:
-    """Create or return the shared ``VRMXT_Particle`` Geometry Node group."""
+    """Create or update the shared ``VRMXT_Particle`` Geometry Node group in place.
+
+    Stale versions are rebuilt inside the same datablock so other armatures' modifiers
+    keep a valid node-group reference.
+    """
     if bpy is None:
         raise RuntimeError("bpy is unavailable")
 
     existing = bpy.data.node_groups.get(NODE_GROUP_NAME)
-    if (
-        existing is not None
-        and existing.bl_idname == "GeometryNodeTree"
-        and existing.get("vrmxt_particle_version") == NODE_GROUP_VERSION
-    ):
+    if existing is not None and existing.bl_idname == "GeometryNodeTree":
+        if existing.get("vrmxt_particle_version") == NODE_GROUP_VERSION:
+            return existing
+        _populate_particle_node_group(existing)
+        existing["vrmxt_particle_version"] = NODE_GROUP_VERSION
         return existing
 
-    if existing is not None:
-        bpy.data.node_groups.remove(existing)
-
-    group = _build_particle_node_group()
+    group = bpy.data.node_groups.new(NODE_GROUP_NAME, "GeometryNodeTree")
+    _populate_particle_node_group(group)
     group["vrmxt_particle_version"] = NODE_GROUP_VERSION
     return group
 
@@ -79,21 +130,21 @@ def clear_vfx_preview(armature_object: Any) -> int:
     if bpy is None or armature_object is None:
         return 0
 
-    armature_name = getattr(armature_object, "name", "")
+    armature_id = ""
+    try:
+        armature_id = str(armature_object.get(ARMATURE_PREVIEW_ID_PROP, "") or "")
+    except (AttributeError, TypeError, KeyError):
+        armature_id = ""
+    if not armature_id:
+        # Still clear legacy name-tagged helpers for this armature.
+        armature_id = getattr(armature_object, "name", "")
+
     candidates: list[Any] = []
     for obj in list(bpy.data.objects):
         if not is_preview_object(obj):
             continue
-        owner = obj.get(PREVIEW_ARMATURE_PROP, "")
-        if owner and owner != armature_name:
+        if not _preview_belongs_to_armature(obj, armature_object, armature_id):
             continue
-        if not owner and obj.parent != armature_object:
-            # Child of a tagged empty still counts when parent is owned by armature.
-            parent = obj.parent
-            if parent is None or not is_preview_object(parent):
-                continue
-            if parent.get(PREVIEW_ARMATURE_PROP, "") != armature_name:
-                continue
         candidates.append(obj)
 
     # Remove mesh children before empty parents.
@@ -142,6 +193,7 @@ def rebuild_vfx_preview(armature_object: Any, *, context: Any | None = None) -> 
     if not emitters:
         return 0
 
+    _ensure_armature_preview_id(armature_object)
     node_group = ensure_particle_node_group()
     blend_context = context
     if blend_context is None:
@@ -163,9 +215,9 @@ def rebuild_vfx_preview(armature_object: Any, *, context: Any | None = None) -> 
     return created
 
 
-def _build_particle_node_group() -> Any:
+def _populate_particle_node_group(ng: Any) -> Any:
+    """Rebuild Geometry Nodes contents on an existing or new node group datablock."""
     assert bpy is not None
-    ng = bpy.data.node_groups.new(NODE_GROUP_NAME, "GeometryNodeTree")
     iface = ng.interface
     while iface.items_tree:
         iface.remove(iface.items_tree[0])
@@ -423,13 +475,14 @@ def _spawn_emitter_preview(
 
     name = preview_object_name(getattr(emitter, "name", ""), index)
     collection = _target_collection(armature_object, context)
+    armature_id = _ensure_armature_preview_id(armature_object)
 
     # Empty owns attachment transform (Empties cannot host Geometry Nodes).
     empty = bpy.data.objects.new(name, None)
     empty.empty_display_type = "PLAIN_AXES"
     empty.empty_display_size = 0.05
     empty[PREVIEW_CUSTOM_PROP] = 1
-    empty[PREVIEW_ARMATURE_PROP] = armature_object.name
+    empty[PREVIEW_ARMATURE_PROP] = armature_id
     empty[PREVIEW_EMITTER_PROP] = getattr(emitter, "name", "") or name
     empty.hide_render = True
     collection.objects.link(empty)
@@ -459,7 +512,7 @@ def _spawn_emitter_preview(
 
     geo = bpy.data.objects.new(geo_name, mesh)
     geo[PREVIEW_CUSTOM_PROP] = 1
-    geo[PREVIEW_ARMATURE_PROP] = armature_object.name
+    geo[PREVIEW_ARMATURE_PROP] = armature_id
     geo[PREVIEW_EMITTER_PROP] = getattr(emitter, "name", "") or name
     geo.hide_render = True
     geo.hide_select = True
@@ -470,7 +523,7 @@ def _spawn_emitter_preview(
     geo.rotation_mode = "QUATERNION"
     geo.rotation_quaternion = (1.0, 0.0, 0.0, 0.0)
 
-    material = _ensure_emitter_material(emitter, index)
+    material = _ensure_emitter_material(armature_object, emitter, index)
     modifier = geo.modifiers.new(name=MODIFIER_NAME, type="NODES")
     modifier.node_group = node_group
     _set_modifier_input(modifier, "Emission Rate", float(emitter.emission_rate))
@@ -494,10 +547,11 @@ def _target_collection(armature_object: Any, context: Any) -> Any:
     return bpy.context.scene.collection
 
 
-def _ensure_emitter_material(emitter: Any, index: int) -> Any:
+def _ensure_emitter_material(armature_object: Any, emitter: Any, index: int) -> Any:
     assert bpy is not None
-    label = preview_object_name(getattr(emitter, "name", ""), index)
-    mat_name = f"{MATERIAL_NAME_PREFIX}{label[len(OBJECT_NAME_PREFIX) :]}"
+    arm_safe = _safe_token(getattr(armature_object, "name", ""), "Armature")
+    emitter_safe = _safe_token(getattr(emitter, "name", ""), f"Emitter")
+    mat_name = f"{MATERIAL_NAME_PREFIX}{arm_safe}_{index:03d}_{emitter_safe}"
     material = bpy.data.materials.get(mat_name)
     if material is None:
         material = bpy.data.materials.new(mat_name)
@@ -638,6 +692,7 @@ def _set_modifier_input(modifier: Any, identifier: str, value: Any) -> None:
 
 
 __all__ = [
+    "ARMATURE_PREVIEW_ID_PROP",
     "MATERIAL_NAME_PREFIX",
     "MODIFIER_NAME",
     "NODE_GROUP_NAME",
