@@ -7,9 +7,9 @@ import json
 import logging
 from typing import Any
 
-from io_scene_vrmxt.common.constants import EXTENSION_MATERIALS_OVERRIDE
-from io_scene_vrmxt.common.json_util import Json, as_dict, as_list
-from io_scene_vrmxt.format.materials_override import (
+from ..common.constants import EXTENSION_MATERIALS_OVERRIDE
+from ..common.json_util import Json, as_dict, as_list
+from ..format.materials_override import (
     parse_materials_override,
     serialize_materials_override,
 )

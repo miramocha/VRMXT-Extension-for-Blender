@@ -7,25 +7,52 @@ import logging
 from collections.abc import Mapping
 from typing import Any
 
-from io_scene_vrmxt.common.constants import EXTENSION_VRMXT_VFX
-from io_scene_vrmxt.common.json_util import get_root_extension
-from io_scene_vrmxt.format.vfx import parse_vfx
+from ..common.constants import EXTENSION_VRMXT_VFX
+from ..common.json_util import get_root_extension
+from ..format.vfx import parse_vfx
+from .property_group import (
+    ATTACHMENT_TYPE_BONE,
+    ATTACHMENT_TYPE_OBJECT,
+)
 
 logger = logging.getLogger(__name__)
 
 CUSTOM_PROP_KEY = "vrmxt_vfx_json"
 
 
-def _resolve_attachment_name(
+def resolve_attachment(
     node_index: int,
     node_index_to_bone_name: Mapping[int, str],
     node_index_to_object_name: Mapping[int, str],
-) -> str | None:
-    if node_index in node_index_to_bone_name:
-        return node_index_to_bone_name[node_index]
-    if node_index in node_index_to_object_name:
-        return node_index_to_object_name[node_index]
+) -> tuple[str, str] | None:
+    """Return ``(attachment_type, name)`` or ``None`` when unresolved."""
+    bone_name = node_index_to_bone_name.get(node_index)
+    if bone_name:
+        return ATTACHMENT_TYPE_BONE, bone_name
+    object_name = node_index_to_object_name.get(node_index)
+    if object_name:
+        return ATTACHMENT_TYPE_OBJECT, object_name
     return None
+
+
+def resolve_texture_image(
+    texture_index: int | None,
+    json_dict: Mapping[str, Any],
+    image_index_to_image: Mapping[int, Any],
+) -> Any | None:
+    """Map ``particle.texture`` (textures[] index) to a Blender Image."""
+    if texture_index is None or texture_index < 0:
+        return None
+    textures = json_dict.get("textures")
+    if not isinstance(textures, list) or texture_index >= len(textures):
+        return None
+    texture_dict = textures[texture_index]
+    if not isinstance(texture_dict, dict):
+        return None
+    source = texture_dict.get("source")
+    if not isinstance(source, int):
+        return None
+    return image_index_to_image.get(source)
 
 
 def apply_vfx_import(context: Any) -> None:
@@ -47,25 +74,41 @@ def apply_vfx_import(context: Any) -> None:
     settings = armature.data.vrmxt_vfx_settings
     settings.emitters.clear()
 
+    blend_data = getattr(getattr(context, "context", None), "blend_data", None)
+    image_index_to_image = getattr(context, "image_index_to_image", {}) or {}
+
     for emitter in vfx.emitters:
-        attachment_name = _resolve_attachment_name(
+        attachment = resolve_attachment(
             emitter.node,
             context.node_index_to_bone_name,
             context.node_index_to_object_name,
         )
-        if attachment_name is None:
+        if attachment is None:
             continue
 
+        attachment_type, attachment_name = attachment
         item = settings.emitters.add()
         item.name = emitter.name or ""
-        item.node_index = emitter.node
-        item.attachment_name = attachment_name
+        item.attachment_type = attachment_type
         item.emitter_type = emitter.type
         item.local_position = emitter.local_position
         item.local_rotation = emitter.local_rotation
+
+        if attachment_type == ATTACHMENT_TYPE_BONE:
+            item.attachment_bone = attachment_name
+            item.attachment_object = None
+        else:
+            item.attachment_bone = ""
+            if blend_data is not None:
+                item.attachment_object = blend_data.objects.get(attachment_name)
+            else:
+                item.attachment_object = None
+
         if emitter.particle is not None:
-            item.texture_index = (
-                emitter.particle.texture if emitter.particle.texture is not None else -1
+            item.texture = resolve_texture_image(
+                emitter.particle.texture,
+                json_dict,
+                image_index_to_image,
             )
             item.emission_rate = emitter.particle.emission_rate
             item.max_particles = emitter.particle.max_particles
@@ -82,4 +125,10 @@ def on_vrm1_import(context: Any) -> None:
         logger.exception("VRMXT VFX import hook failed")
 
 
-__all__ = ["CUSTOM_PROP_KEY", "apply_vfx_import", "on_vrm1_import"]
+__all__ = [
+    "CUSTOM_PROP_KEY",
+    "apply_vfx_import",
+    "on_vrm1_import",
+    "resolve_attachment",
+    "resolve_texture_image",
+]

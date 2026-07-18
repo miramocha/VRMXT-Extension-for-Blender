@@ -8,14 +8,14 @@ import logging
 from types import ModuleType
 from typing import Any
 
-from io_scene_vrmxt.materials_override.export_hook import (
+from ..materials_override.export_hook import (
     on_vrm1_export as on_materials_export,
 )
-from io_scene_vrmxt.materials_override.import_hook import (
+from ..materials_override.import_hook import (
     on_vrm1_import as on_materials_import,
 )
-from io_scene_vrmxt.vfx.export_hook import on_vrm1_export as on_vfx_export
-from io_scene_vrmxt.vfx.import_hook import on_vrm1_import as on_vfx_import
+from ..vfx.export_hook import on_vrm1_export as on_vfx_export
+from ..vfx.import_hook import on_vrm1_import as on_vfx_import
 
 logger = logging.getLogger(__name__)
 

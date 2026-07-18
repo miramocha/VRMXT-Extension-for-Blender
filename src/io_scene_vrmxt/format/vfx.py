@@ -7,8 +7,8 @@ import math
 from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass, field
 
-from io_scene_vrmxt.common.constants import EXTENSION_VRMXT_VFX, SPEC_VERSION_1_0
-from io_scene_vrmxt.common.json_util import (
+from ..common.constants import EXTENSION_VRMXT_VFX, SPEC_VERSION_1_0
+from ..common.json_util import (
     Json,
     as_dict,
     as_int,
@@ -19,7 +19,7 @@ from io_scene_vrmxt.common.json_util import (
     finite_numbers,
     get_root_extension,
 )
-from io_scene_vrmxt.common.validation import is_finite_non_negative, is_positive_int
+from ..common.validation import is_finite_non_negative, is_positive_int
 
 DEFAULT_LOCAL_POSITION = (0.0, 0.0, 0.0)
 DEFAULT_LOCAL_ROTATION = (0.0, 0.0, 0.0, 1.0)

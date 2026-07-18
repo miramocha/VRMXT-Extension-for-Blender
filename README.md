@@ -8,11 +8,9 @@ Specs live in [Extended-VRM-Specs](https://github.com/miramocha/Extended-VRM-Spe
 
 ## Status
 
-Foundation scaffold. Current foundations:
-
 | Extension | Import | Export | UI | Notes |
 |-----------|--------|--------|----|-------|
-| `VRMXT_vfx` | JSON → property groups | property groups → JSON | stub | No particle preview; texture indices deferred |
+| `VRMXT_vfx` | JSON → property groups | property groups → JSON | armature UIList | Authoring MVP; no viewport particle preview. Texture export uses host `find_or_create_image`. |
 | `VRMXT_materials_override` | parse/store | serialize Unity/Unreal profiles | stub | Authoring only; no Blender engine profile |
 
 ## Requirements

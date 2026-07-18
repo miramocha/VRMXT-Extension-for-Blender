@@ -6,7 +6,7 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass, field
 
-from io_scene_vrmxt.common.constants import (
+from ..common.constants import (
     ENGINE_UNITY,
     ENGINE_UNREAL,
     EXTENSION_MATERIALS_OVERRIDE,
@@ -14,7 +14,7 @@ from io_scene_vrmxt.common.constants import (
     SPEC_VERSION_1_0,
     TARGET_TYPES,
 )
-from io_scene_vrmxt.common.json_util import (
+from ..common.json_util import (
     Json,
     as_dict,
     as_list,
