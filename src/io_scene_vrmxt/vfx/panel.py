@@ -7,7 +7,9 @@ from typing import ClassVar
 
 from .ops import (
     VRMXT_OT_add_vfx_emitter,
+    VRMXT_OT_clear_vfx_preview,
     VRMXT_OT_move_vfx_emitter,
+    VRMXT_OT_rebuild_vfx_preview,
     VRMXT_OT_remove_vfx_emitter,
 )
 from .property_group import (
@@ -149,6 +151,14 @@ def _draw_emitter_details(
     box.prop(emitter, "start_color")
 
 
+def _draw_preview_controls(layout: UILayout) -> None:
+    if VRMXT_OT_rebuild_vfx_preview is None or VRMXT_OT_clear_vfx_preview is None:
+        return
+    row = layout.row(align=True)
+    row.operator(VRMXT_OT_rebuild_vfx_preview.bl_idname, icon="FILE_REFRESH")
+    row.operator(VRMXT_OT_clear_vfx_preview.bl_idname, icon="X")
+
+
 def draw_vfx_layout(layout: UILayout, armature_object: object) -> None:
     armature_data = getattr(armature_object, "data", None)
     if not isinstance(armature_data, Armature):
@@ -158,6 +168,7 @@ def draw_vfx_layout(layout: UILayout, armature_object: object) -> None:
         return
 
     _draw_emitter_list(layout, settings)
+    _draw_preview_controls(layout)
 
     emitters = settings.emitters
     index = settings.active_emitter_index
