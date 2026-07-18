@@ -10,7 +10,7 @@ Specs live in [Extended-VRM-Specs](https://github.com/miramocha/Extended-VRM-Spe
 
 | Extension | Import | Export | UI | Notes |
 |-----------|--------|--------|----|-------|
-| `VRMXT_vfx` | JSON → property groups | property groups → JSON | armature UIList | Authoring MVP; no viewport particle preview. Texture export uses host `find_or_create_image`. |
+| `VRMXT_vfx` | JSON → property groups + GeoNodes preview | property groups → JSON | armature UIList | Preview via shared `VRMXT_Particle` node group; export SoT = property groups. |
 | `VRMXT_materials_override` | parse/store | serialize Unity/Unreal profiles | stub | Authoring only; no Blender engine profile |
 
 ## Requirements

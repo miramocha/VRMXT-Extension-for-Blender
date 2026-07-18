@@ -117,6 +117,22 @@ def apply_vfx_import(context: Any) -> None:
             item.start_speed = emitter.particle.start_speed
             item.start_color = emitter.particle.start_color
 
+    _rebuild_preview_after_import(armature, context)
+
+
+def _rebuild_preview_after_import(armature: Any, context: Any) -> None:
+    """Spawn GeoNodes helpers after property groups are filled."""
+    try:
+        from .geonodes_preview import rebuild_vfx_preview
+    except ImportError:
+        return
+
+    blend_context = getattr(context, "context", None)
+    try:
+        rebuild_vfx_preview(armature, context=blend_context)
+    except Exception:  # noqa: BLE001 - preview must not abort VFX import
+        logger.exception("VRMXT VFX GeoNodes preview rebuild failed")
+
 
 def on_vrm1_import(context: Any) -> None:
     try:

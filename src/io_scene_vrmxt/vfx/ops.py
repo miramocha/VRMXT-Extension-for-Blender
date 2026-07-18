@@ -13,21 +13,17 @@ except ImportError:  # pragma: no cover
     bpy = None  # type: ignore[assignment]
 
 
-def _active_vfx_settings(context: object):
+def _active_armature_object(context: object):
     if bpy is None:
         return None
 
-    def _settings_from_object(obj: object):
-        if obj is None or getattr(obj, "type", None) != "ARMATURE":
-            return None
-        armature_data = obj.data
-        if not isinstance(armature_data, Armature):
-            return None
-        return getattr(armature_data, "vrmxt_vfx_settings", None)
-
-    settings = _settings_from_object(getattr(context, "active_object", None))
-    if settings is not None:
-        return settings
+    obj = getattr(context, "active_object", None)
+    if (
+        obj is not None
+        and getattr(obj, "type", None) == "ARMATURE"
+        and hasattr(getattr(obj, "data", None), "vrmxt_vfx_settings")
+    ):
+        return obj
 
     try:
         from io_scene_vrm.editor import search as vrm_search
@@ -42,9 +38,40 @@ def _active_vfx_settings(context: object):
             return None
 
     try:
-        return _settings_from_object(vrm_search.current_armature(context))
+        armature = vrm_search.current_armature(context)
     except Exception:  # noqa: BLE001
         return None
+    if (
+        armature is not None
+        and getattr(armature, "type", None) == "ARMATURE"
+        and hasattr(getattr(armature, "data", None), "vrmxt_vfx_settings")
+    ):
+        return armature
+    return None
+
+
+def _active_vfx_settings(context: object):
+    armature = _active_armature_object(context)
+    if armature is None:
+        return None
+    armature_data = armature.data
+    if not isinstance(armature_data, Armature):
+        return None
+    return getattr(armature_data, "vrmxt_vfx_settings", None)
+
+
+def _rebuild_preview_safe(context: object) -> None:
+    armature = _active_armature_object(context)
+    if armature is None:
+        return
+    try:
+        from .geonodes_preview import rebuild_vfx_preview
+    except ImportError:
+        return
+    try:
+        rebuild_vfx_preview(armature, context=context)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def _default_attachment_bone(context: object) -> str:
@@ -95,6 +122,7 @@ if bpy is not None:
             item.attachment_type = "BONE"
             item.attachment_bone = _default_attachment_bone(context)
             settings.active_emitter_index = len(settings.emitters) - 1
+            _rebuild_preview_safe(context)
             return {"FINISHED"}
 
     class VRMXT_OT_remove_vfx_emitter(Operator):
@@ -114,6 +142,7 @@ if bpy is not None:
             settings.active_emitter_index = min(
                 index, max(0, len(settings.emitters) - 1)
             )
+            _rebuild_preview_safe(context)
             return {"FINISHED"}
 
     class VRMXT_OT_move_vfx_emitter(Operator):
@@ -143,22 +172,68 @@ if bpy is not None:
                     return {"CANCELLED"}
                 settings.emitters.move(index, index - 1)
                 settings.active_emitter_index = index - 1
+                _rebuild_preview_safe(context)
                 return {"FINISHED"}
             if index >= len(settings.emitters) - 1:
                 return {"CANCELLED"}
             settings.emitters.move(index, index + 1)
             settings.active_emitter_index = index + 1
+            _rebuild_preview_safe(context)
+            return {"FINISHED"}
+
+    class VRMXT_OT_rebuild_vfx_preview(Operator):
+        bl_idname = "vrmxt.rebuild_vfx_preview"
+        bl_label = "Rebuild VFX Preview"
+        bl_description = (
+            "Rebuild Geometry Nodes particle preview helpers from VFX emitters"
+        )
+        bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
+
+        def execute(self, context: Context) -> set[str]:
+            armature = _active_armature_object(context)
+            if armature is None:
+                return {"CANCELLED"}
+            try:
+                from .geonodes_preview import rebuild_vfx_preview
+            except ImportError:
+                self.report({"ERROR"}, "GeoNodes preview unavailable")
+                return {"CANCELLED"}
+            count = rebuild_vfx_preview(armature, context=context)
+            self.report({"INFO"}, f"Rebuilt {count} VFX preview helper(s)")
+            return {"FINISHED"}
+
+    class VRMXT_OT_clear_vfx_preview(Operator):
+        bl_idname = "vrmxt.clear_vfx_preview"
+        bl_label = "Clear VFX Preview"
+        bl_description = "Remove Geometry Nodes particle preview helpers"
+        bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
+
+        def execute(self, context: Context) -> set[str]:
+            armature = _active_armature_object(context)
+            if armature is None:
+                return {"CANCELLED"}
+            try:
+                from .geonodes_preview import clear_vfx_preview
+            except ImportError:
+                self.report({"ERROR"}, "GeoNodes preview unavailable")
+                return {"CANCELLED"}
+            count = clear_vfx_preview(armature)
+            self.report({"INFO"}, f"Cleared {count} VFX preview helper(s)")
             return {"FINISHED"}
 
     CLASSES = (
         VRMXT_OT_add_vfx_emitter,
         VRMXT_OT_remove_vfx_emitter,
         VRMXT_OT_move_vfx_emitter,
+        VRMXT_OT_rebuild_vfx_preview,
+        VRMXT_OT_clear_vfx_preview,
     )
 else:  # pragma: no cover
     VRMXT_OT_add_vfx_emitter = None  # type: ignore[misc, assignment]
     VRMXT_OT_remove_vfx_emitter = None  # type: ignore[misc, assignment]
     VRMXT_OT_move_vfx_emitter = None  # type: ignore[misc, assignment]
+    VRMXT_OT_rebuild_vfx_preview = None  # type: ignore[misc, assignment]
+    VRMXT_OT_clear_vfx_preview = None  # type: ignore[misc, assignment]
     CLASSES = ()
 
 
@@ -178,7 +253,9 @@ def unregister() -> None:
 
 __all__ = [
     "VRMXT_OT_add_vfx_emitter",
+    "VRMXT_OT_clear_vfx_preview",
     "VRMXT_OT_move_vfx_emitter",
+    "VRMXT_OT_rebuild_vfx_preview",
     "VRMXT_OT_remove_vfx_emitter",
     "register",
     "unregister",

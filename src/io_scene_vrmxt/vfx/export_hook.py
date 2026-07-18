@@ -1,5 +1,9 @@
 # SPDX-License-Identifier: MIT
-"""Serialize armature VFX property groups into root VRMXT_vfx."""
+"""Serialize armature VFX property groups into root VRMXT_vfx.
+
+Export reads property groups only. Geometry Nodes preview helpers tagged with
+``vrmxt_vfx_preview`` are never a source of truth (host export also skips them).
+"""
 
 from __future__ import annotations
 
@@ -36,6 +40,9 @@ def resolve_node_index(
         return bone_name_to_node_index.get(attachment_bone)
     if attachment_type == ATTACHMENT_TYPE_OBJECT:
         if not attachment_object_name:
+            return None
+        # Preview helpers must never resolve as attachment nodes.
+        if attachment_object_name.startswith("VRMXT_vfx_"):
             return None
         return object_name_to_node_index.get(attachment_object_name)
     return None
