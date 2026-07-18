@@ -20,6 +20,7 @@ from ..format.vfx import (
     write_vfx_to_gltf,
 )
 from .gltf_texture import ensure_vfx_texture_index
+from .geonodes_preview import is_preview_object
 from .property_group import (
     ATTACHMENT_TYPE_BONE,
     ATTACHMENT_TYPE_OBJECT,
@@ -34,6 +35,8 @@ def resolve_node_index(
     attachment_object_name: str | None,
     bone_name_to_node_index: Mapping[str, int],
     object_name_to_node_index: Mapping[str, int],
+    *,
+    attachment_object: Any | None = None,
 ) -> int | None:
     if attachment_type == ATTACHMENT_TYPE_BONE:
         if not attachment_bone:
@@ -43,7 +46,7 @@ def resolve_node_index(
         if not attachment_object_name:
             return None
         # Preview helpers must never resolve as attachment nodes.
-        if attachment_object_name.startswith("VRMXT_vfx_"):
+        if attachment_object is not None and is_preview_object(attachment_object):
             return None
         return object_name_to_node_index.get(attachment_object_name)
     return None
@@ -85,6 +88,7 @@ def apply_vfx_export(context: Any) -> None:
             attachment_object_name,
             context.bone_name_to_node_index,
             context.object_name_to_node_index,
+            attachment_object=attachment_object,
         )
         if node_index is None:
             skipped += 1

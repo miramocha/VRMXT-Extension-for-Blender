@@ -76,7 +76,11 @@ def _safe_token(value: str, fallback: str) -> str:
 
 
 def _ensure_armature_preview_id(armature_object: Any) -> str:
-    """Return a stable UUID on the armature used to own preview helpers."""
+    """Return a stable id on the armature used to own preview helpers.
+
+    Prefers a persisted UUID. If the custom property cannot be stored, falls back
+    to the armature object name so clear/rebuild can still match tagged helpers.
+    """
     existing = None
     try:
         existing = armature_object.get(ARMATURE_PREVIEW_ID_PROP)
@@ -84,12 +88,17 @@ def _ensure_armature_preview_id(armature_object: Any) -> str:
         existing = None
     if existing:
         return str(existing)
+
+    name_fallback = str(getattr(armature_object, "name", "") or "")
     new_id = str(uuid.uuid4())
     try:
         armature_object[ARMATURE_PREVIEW_ID_PROP] = new_id
+        stored = armature_object.get(ARMATURE_PREVIEW_ID_PROP)
+        if str(stored or "") == new_id:
+            return new_id
     except (AttributeError, TypeError, KeyError):
         pass
-    return new_id
+    return name_fallback or new_id
 
 
 def _preview_belongs_to_armature(obj: Any, armature_object: Any, armature_id: str) -> bool:

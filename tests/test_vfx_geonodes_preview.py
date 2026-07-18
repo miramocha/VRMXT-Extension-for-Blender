@@ -13,6 +13,7 @@ from io_scene_vrmxt.vfx.geonodes_preview import (
     OBJECT_NAME_PREFIX,
     PREVIEW_ARMATURE_PROP,
     PREVIEW_CUSTOM_PROP,
+    _ensure_armature_preview_id,
     _preview_belongs_to_armature,
     clear_vfx_preview,
     is_preview_object,
@@ -77,17 +78,59 @@ class TestVfxPreviewOwnership(unittest.TestCase):
             _preview_belongs_to_armature(make_helper("other"), armature, "uuid-arm")
         )
 
+    def test_ensure_armature_preview_id_falls_back_to_name_when_store_fails(
+        self,
+    ) -> None:
+        class _Arm:
+            name = "Arm.001"
+
+            def get(self, key, default=None):
+                return default
+
+            def __setitem__(self, key, value):
+                raise TypeError("read-only")
+
+        arm = _Arm()
+        preview_id = _ensure_armature_preview_id(arm)
+        self.assertEqual(preview_id, "Arm.001")
+        helper = SimpleNamespace(
+            parent=None,
+            get=lambda key, default=None: (
+                preview_id if key == PREVIEW_ARMATURE_PROP else default
+            ),
+        )
+        self.assertTrue(_preview_belongs_to_armature(helper, arm, preview_id))
+
 
 class TestVfxPreviewExportIsolation(unittest.TestCase):
-    def test_resolve_node_index_rejects_preview_object_name(self) -> None:
+    def test_resolve_node_index_rejects_preview_object(self) -> None:
+        preview = SimpleNamespace(
+            get=lambda key, default=None: (
+                1 if key == PREVIEW_CUSTOM_PROP else default
+            )
+        )
         self.assertIsNone(
             resolve_node_index(
                 ATTACHMENT_TYPE_OBJECT,
                 "",
-                "VRMXT_vfx_HandSpark.000",
+                "HandMesh",
                 {},
-                {"VRMXT_vfx_HandSpark.000": 9},
+                {"HandMesh": 9},
+                attachment_object=preview,
             )
+        )
+
+    def test_resolve_node_index_allows_vrmxt_prefixed_scene_object(self) -> None:
+        # Name prefix alone must not block a real attachment object.
+        self.assertEqual(
+            resolve_node_index(
+                ATTACHMENT_TYPE_OBJECT,
+                "",
+                "VRMXT_vfx_Prop",
+                {},
+                {"VRMXT_vfx_Prop": 9},
+            ),
+            9,
         )
 
     def test_resolve_node_index_allows_normal_object(self) -> None:
