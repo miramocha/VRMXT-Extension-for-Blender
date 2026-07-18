@@ -7,13 +7,13 @@ import json
 import logging
 from typing import Any
 
-from io_scene_vrmxt.common.json_util import Json, as_dict, as_list
-from io_scene_vrmxt.format.materials_override import (
+from ..common.json_util import Json, as_dict, as_list
+from ..format.materials_override import (
     ensure_materials_override_extensions_used,
     parse_materials_override,
     write_materials_override_to_material_dict,
 )
-from io_scene_vrmxt.materials_override.import_hook import CUSTOM_PROP_KEY
+from .import_hook import CUSTOM_PROP_KEY
 
 logger = logging.getLogger(__name__)
 

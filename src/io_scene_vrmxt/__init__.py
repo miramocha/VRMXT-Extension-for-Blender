@@ -13,7 +13,7 @@ bl_info = {
     "category": "Import-Export",
 }
 
-from io_scene_vrmxt import registration  # noqa: E402
+from . import registration  # noqa: E402
 
 
 def register() -> None:
