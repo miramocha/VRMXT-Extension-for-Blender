@@ -2,7 +2,8 @@
 """Serialize armature VFX property groups into root VRMXT_vfx.
 
 Export reads property groups only. Geometry Nodes preview helpers tagged with
-``vrmxt_vfx_preview`` are never a source of truth (host export also skips them).
+``vrmxt_vfx_preview`` are never a source of truth. Host ``export_objects`` also
+omits helpers tagged ``vrm_exclude_from_export``.
 """
 
 from __future__ import annotations
