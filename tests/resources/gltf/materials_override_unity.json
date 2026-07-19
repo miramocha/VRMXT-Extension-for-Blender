@@ -14,15 +14,31 @@
             {
               "engine": "unity",
               "material": {
-                "kind": "shader",
-                "name": "Example/SkinToon",
-                "variant": "urp"
+                "idType": "shaderName",
+                "id": "Example/SkinToon",
+                "variant": "urp",
+                "provider": {
+                  "id": "com.miramocha.univrmxt",
+                  "version": "0.1.0"
+                }
               },
               "bindings": [
                 {
                   "source": "shadeColorFactor",
                   "target": "_ShadeColor",
                   "targetType": "vector"
+                }
+              ],
+              "properties": [
+                {
+                  "name": "_OutlineWidth",
+                  "type": "scalar",
+                  "value": 0.05
+                },
+                {
+                  "name": "_USE_RIM_LIGHT",
+                  "type": "shaderFeature",
+                  "value": true
                 }
               ]
             }

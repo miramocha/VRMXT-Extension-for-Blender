@@ -101,7 +101,9 @@ def _ensure_armature_preview_id(armature_object: Any) -> str:
     return name_fallback or new_id
 
 
-def _preview_belongs_to_armature(obj: Any, armature_object: Any, armature_id: str) -> bool:
+def _preview_belongs_to_armature(
+    obj: Any, armature_object: Any, armature_id: str
+) -> bool:
     owner = ""
     try:
         owner = str(obj.get(PREVIEW_ARMATURE_PROP, "") or "")
@@ -264,7 +266,9 @@ def _populate_particle_node_group(ng: Any) -> Any:
     def link(from_sock: Any, to_sock: Any) -> None:
         links.new(from_sock, to_sock)
 
-    def math_node(operation: str, location: tuple[float, float], label: str = "") -> Any:
+    def math_node(
+        operation: str, location: tuple[float, float], label: str = ""
+    ) -> Any:
         node = nodes.new("ShaderNodeMath")
         node.operation = operation
         node.location = location
@@ -635,7 +639,9 @@ def _ensure_emitter_material(armature_object: Any, emitter: Any, index: int) -> 
         factor.default_value = 1.0
         a_col = next(s for s in mul_color.inputs if s.identifier == "A_Color")
         b_col = next(s for s in mul_color.inputs if s.identifier == "B_Color")
-        result_col = next(s for s in mul_color.outputs if s.identifier == "Result_Color")
+        result_col = next(
+            s for s in mul_color.outputs if s.identifier == "Result_Color"
+        )
         links.new(tex.outputs["Color"], a_col)
         b_col.default_value = tint_rgb
         links.new(result_col, emission.inputs["Color"])
