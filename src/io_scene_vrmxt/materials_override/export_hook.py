@@ -10,8 +10,7 @@ from typing import Any
 from ..common.json_util import Json, as_dict, as_list
 from ..format.materials_override import (
     ensure_materials_override_extensions_used,
-    parse_materials_override,
-    write_materials_override_to_material_dict,
+    write_raw_materials_override_to_material_dict,
 )
 from .import_hook import CUSTOM_PROP_KEY
 
@@ -44,15 +43,13 @@ def apply_materials_override_export(context: Any) -> None:
         override_dict = _read_material_override_json_from_name(context, material_name)
         if override_dict is None:
             continue
-        override = parse_materials_override(override_dict)
-        if override is None:
-            continue
         if material_index < 0 or material_index >= len(materials_raw):
             continue
         material_dict = as_dict(materials_raw[material_index])
         if material_dict is None:
             continue
-        write_materials_override_to_material_dict(material_dict, override)
+        # Write stored JSON verbatim; do not gate on typed parse.
+        write_raw_materials_override_to_material_dict(material_dict, override_dict)
         wrote_any = True
 
     if wrote_any:

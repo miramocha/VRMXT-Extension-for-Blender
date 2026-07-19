@@ -10,6 +10,8 @@ from ..common.constants import (
     ENGINE_UNITY,
     ENGINE_UNREAL,
     EXTENSION_MATERIALS_OVERRIDE,
+    ID_TYPE_MATERIAL_SET,
+    ID_TYPE_SHADER_NAME,
     MTOON_SOURCES,
     SPEC_VERSION_1_0,
     TARGET_TYPES,
@@ -17,7 +19,9 @@ from ..common.constants import (
 from ..common.json_util import (
     Json,
     as_dict,
+    as_int,
     as_list,
+    as_number,
     as_str,
     ensure_extensions_used,
     get_material_extension,
@@ -37,8 +41,8 @@ class MaterialProvider:
 
 @dataclass
 class UnityMaterial:
-    kind: str
-    name: str
+    id_type: str
+    id: str
     variant: str | None = None
     provider: MaterialProvider | None = None
 
@@ -63,7 +67,7 @@ class UnrealVariants:
 
 @dataclass
 class UnrealMaterial:
-    kind: str
+    id_type: str
     variants: UnrealVariants
     provider: MaterialProvider | None = None
 
@@ -76,10 +80,19 @@ class MaterialBinding:
 
 
 @dataclass
+class MaterialProperty:
+    name: str
+    type: str
+    value: Json | None = None
+    texture: int | None = None
+
+
+@dataclass
 class MaterialOverride:
     engine: str
     material: UnityMaterial | UnrealMaterial
     bindings: list[MaterialBinding] = field(default_factory=list)
+    properties: list[MaterialProperty] = field(default_factory=list)
 
 
 @dataclass
@@ -117,12 +130,67 @@ def _parse_bindings(raw_bindings: list[Json]) -> list[MaterialBinding] | None:
     return bindings
 
 
-def _parse_unity_material(raw: Mapping[str, Json]) -> UnityMaterial | None:
-    kind = as_str(raw.get("kind"))
-    if kind != "shader":
-        return None
+def _parse_property(raw: Mapping[str, Json]) -> MaterialProperty | None:
     name = as_str(raw.get("name"))
-    if name is None or not name:
+    prop_type = as_str(raw.get("type"))
+    if name is None or not name or prop_type is None:
+        return None
+    if prop_type not in TARGET_TYPES:
+        return None
+
+    if prop_type == "texture":
+        texture = as_int(raw.get("texture"))
+        if texture is None or texture < 0:
+            return None
+        return MaterialProperty(name=name, type=prop_type, texture=texture)
+
+    if "value" not in raw:
+        return None
+    value = raw.get("value")
+
+    if prop_type == "shaderFeature":
+        if not isinstance(value, bool):
+            return None
+        return MaterialProperty(name=name, type=prop_type, value=value)
+
+    if prop_type == "vector":
+        values_list = as_list(value)
+        if values_list is None or not values_list:
+            return None
+        numbers: list[Json] = []
+        for item in values_list:
+            number = as_number(item)
+            if number is None:
+                return None
+            numbers.append(number)
+        return MaterialProperty(name=name, type=prop_type, value=numbers)
+
+    # scalar
+    number = as_number(value)
+    if number is None:
+        return None
+    return MaterialProperty(name=name, type=prop_type, value=number)
+
+
+def _parse_properties(raw_properties: list[Json]) -> list[MaterialProperty] | None:
+    properties: list[MaterialProperty] = []
+    for item in raw_properties:
+        property_dict = as_dict(item)
+        if property_dict is None:
+            return None
+        parsed = _parse_property(property_dict)
+        if parsed is None:
+            return None
+        properties.append(parsed)
+    return properties
+
+
+def _parse_unity_material(raw: Mapping[str, Json]) -> UnityMaterial | None:
+    id_type = as_str(raw.get("idType"))
+    if id_type != ID_TYPE_SHADER_NAME:
+        return None
+    material_id = as_str(raw.get("id"))
+    if material_id is None or not material_id:
         return None
     variant = as_str(raw.get("variant"))
     if variant is not None and variant not in UNITY_VARIANTS:
@@ -131,7 +199,12 @@ def _parse_unity_material(raw: Mapping[str, Json]) -> UnityMaterial | None:
     provider = _parse_provider(provider_raw) if provider_raw is not None else None
     if provider_raw is not None and provider is None:
         return None
-    return UnityMaterial(kind=kind, name=name, variant=variant, provider=provider)
+    return UnityMaterial(
+        id_type=id_type,
+        id=material_id,
+        variant=variant,
+        provider=provider,
+    )
 
 
 def _parse_unreal_variants(raw: Mapping[str, Json]) -> UnrealVariants | None:
@@ -153,8 +226,8 @@ def _parse_unreal_variants(raw: Mapping[str, Json]) -> UnrealVariants | None:
 
 
 def _parse_unreal_material(raw: Mapping[str, Json]) -> UnrealMaterial | None:
-    kind = as_str(raw.get("kind"))
-    if kind != "materialSet":
+    id_type = as_str(raw.get("idType"))
+    if id_type != ID_TYPE_MATERIAL_SET:
         return None
     variants_raw = as_dict(raw.get("variants"))
     if variants_raw is None:
@@ -166,7 +239,7 @@ def _parse_unreal_material(raw: Mapping[str, Json]) -> UnrealMaterial | None:
     provider = _parse_provider(provider_raw) if provider_raw is not None else None
     if provider_raw is not None and provider is None:
         return None
-    return UnrealMaterial(kind=kind, variants=variants, provider=provider)
+    return UnrealMaterial(id_type=id_type, variants=variants, provider=provider)
 
 
 def _parse_override(raw: Mapping[str, Json]) -> MaterialOverride | None:
@@ -198,7 +271,23 @@ def _parse_override(raw: Mapping[str, Json]) -> MaterialOverride | None:
             return None
         bindings = parsed_bindings
 
-    return MaterialOverride(engine=engine, material=material, bindings=bindings)
+    properties_raw = raw.get("properties")
+    properties: list[MaterialProperty] = []
+    if properties_raw is not None:
+        properties_list = as_list(properties_raw)
+        if properties_list is None:
+            return None
+        parsed_properties = _parse_properties(properties_list)
+        if parsed_properties is None:
+            return None
+        properties = parsed_properties
+
+    return MaterialOverride(
+        engine=engine,
+        material=material,
+        bindings=bindings,
+        properties=properties,
+    )
 
 
 def parse_materials_override(
@@ -241,8 +330,8 @@ def _serialize_provider(provider: MaterialProvider) -> dict[str, Json]:
 
 def _serialize_unity_material(material: UnityMaterial) -> dict[str, Json]:
     result: dict[str, Json] = {
-        "kind": material.kind,
-        "name": material.name,
+        "idType": material.id_type,
+        "id": material.id,
     }
     if material.variant is not None:
         result["variant"] = material.variant
@@ -266,7 +355,7 @@ def _serialize_unreal_variants(variants: UnrealVariants) -> dict[str, Json]:
 
 def _serialize_unreal_material(material: UnrealMaterial) -> dict[str, Json]:
     result: dict[str, Json] = {
-        "kind": material.kind,
+        "idType": material.id_type,
         "variants": _serialize_unreal_variants(material.variants),
     }
     if material.provider is not None:
@@ -288,6 +377,18 @@ def _serialize_binding(binding: MaterialBinding) -> dict[str, Json]:
     }
 
 
+def _serialize_property(prop: MaterialProperty) -> dict[str, Json]:
+    result: dict[str, Json] = {
+        "name": prop.name,
+        "type": prop.type,
+    }
+    if prop.type == "texture":
+        result["texture"] = prop.texture if prop.texture is not None else 0
+    else:
+        result["value"] = prop.value
+    return result
+
+
 def _serialize_override(override: MaterialOverride) -> dict[str, Json]:
     result: dict[str, Json] = {
         "engine": override.engine,
@@ -296,6 +397,10 @@ def _serialize_override(override: MaterialOverride) -> dict[str, Json]:
     if override.bindings:
         result["bindings"] = [
             _serialize_binding(binding) for binding in override.bindings
+        ]
+    if override.properties:
+        result["properties"] = [
+            _serialize_property(prop) for prop in override.properties
         ]
     return result
 
@@ -313,11 +418,21 @@ def write_materials_override_to_material_dict(
     material_dict: MutableMapping[str, Json],
     extension: VrmxtMaterialsOverride,
 ) -> None:
+    write_raw_materials_override_to_material_dict(
+        material_dict,
+        serialize_materials_override(extension),
+    )
+
+
+def write_raw_materials_override_to_material_dict(
+    material_dict: MutableMapping[str, Json],
+    extension_dict: Mapping[str, Json],
+) -> None:
     extensions = material_dict.get("extensions")
     if not isinstance(extensions, dict):
         extensions = {}
         material_dict["extensions"] = extensions
-    extensions[EXTENSION_MATERIALS_OVERRIDE] = serialize_materials_override(extension)
+    extensions[EXTENSION_MATERIALS_OVERRIDE] = dict(extension_dict)
 
 
 def ensure_materials_override_extensions_used(
@@ -338,6 +453,7 @@ def read_materials_override_from_material(
 __all__ = [
     "MaterialBinding",
     "MaterialOverride",
+    "MaterialProperty",
     "MaterialProvider",
     "UnityMaterial",
     "UnrealMaterial",
@@ -348,4 +464,5 @@ __all__ = [
     "read_materials_override_from_material",
     "serialize_materials_override",
     "write_materials_override_to_material_dict",
+    "write_raw_materials_override_to_material_dict",
 ]

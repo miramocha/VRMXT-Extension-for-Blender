@@ -2,8 +2,9 @@
 
 ## Unreleased
 
-- Docs: materials override still on `kind`/`name`; switch to `idType`/`id` after
-  UniVRMXT merge (no dual-read — nothing in production uses the old names)
+- Materials override: `idType`/`id` (+ Unreal `materialSet`, optional `properties[]`);
+  drop legacy `kind`/`name`. Import/export store and write verbatim JSON so Unity
+  round-trip does not depend on typed parse. Readonly Material PROPERTIES panel.
 - VFX Geometry Nodes viewport preview after import (shared `VRMXT_Particle` group;
   Empty attachment helper + child mesh for the modifier)
 - Preview ownership uses stable armature UUID (rename-safe); unique Empty/material

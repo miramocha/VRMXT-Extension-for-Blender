@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Apply parsed VRMXT_materials_override data to Blender materials."""
+"""Apply VRMXT_materials_override data to Blender materials."""
 
 from __future__ import annotations
 
@@ -9,10 +9,6 @@ from typing import Any
 
 from ..common.constants import EXTENSION_MATERIALS_OVERRIDE
 from ..common.json_util import Json, as_dict, as_list
-from ..format.materials_override import (
-    parse_materials_override,
-    serialize_materials_override,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -43,18 +39,13 @@ def apply_materials_override_import(context: Any) -> None:
         if extension_dict is None:
             continue
 
-        override = parse_materials_override(extension_dict)
-        if override is None:
-            continue
-
         blender_material = context.material_index_to_material.get(material_index)
         if blender_material is None:
             continue
 
-        _set_material_override_json(
-            blender_material,
-            serialize_materials_override(override),
-        )
+        # Store the original extension JSON verbatim so round-trip does not
+        # depend on typed parse succeeding.
+        _set_material_override_json(blender_material, extension_dict)
 
 
 def on_vrm1_import(context: Any) -> None:

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from .hooks import vrm1_hooks
+from .materials_override import panel as materials_panel
 from .materials_override import property_group as materials_property_group
 from .vfx import ops as vfx_ops
 from .vfx import panel as vfx_panel
@@ -17,11 +18,13 @@ def register() -> None:
     vfx_ui_list.register()
     vfx_ops.register()
     vfx_panel.register()
+    materials_panel.register()
     vrm1_hooks.register()
 
 
 def unregister() -> None:
     vrm1_hooks.unregister()
+    materials_panel.unregister()
     vfx_panel.unregister()
     vfx_ops.unregister()
     vfx_ui_list.unregister()

@@ -8,7 +8,10 @@ SPEC_VERSION_1_0 = "1.0"
 ENGINE_UNITY = "unity"
 ENGINE_UNREAL = "unreal"
 
-TARGET_TYPES = frozenset({"scalar", "vector", "texture", "staticSwitch"})
+ID_TYPE_SHADER_NAME = "shaderName"
+ID_TYPE_MATERIAL_SET = "materialSet"
+
+TARGET_TYPES = frozenset({"scalar", "vector", "texture", "shaderFeature"})
 
 MTOON_SOURCES = frozenset(
     {
@@ -27,6 +30,8 @@ __all__ = [
     "ENGINE_UNREAL",
     "EXTENSION_MATERIALS_OVERRIDE",
     "EXTENSION_VRMXT_VFX",
+    "ID_TYPE_MATERIAL_SET",
+    "ID_TYPE_SHADER_NAME",
     "MTOON_SOURCES",
     "SPEC_VERSION_1_0",
     "TARGET_TYPES",
