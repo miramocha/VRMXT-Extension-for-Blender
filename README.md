@@ -11,7 +11,7 @@ Specs live in [Extended-VRM-Specs](https://github.com/miramocha/Extended-VRM-Spe
 | Extension | Import | Export | UI | Notes |
 |-----------|--------|--------|----|-------|
 | `VRMXT_vfx` | JSON → property groups + GeoNodes preview | property groups → JSON | armature UIList | Preview via shared `VRMXT_Particle` node group; export SoT = property groups. |
-| `VRMXT_materials_override` | parse/store | serialize Unity/Unreal profiles | stub | Authoring only; no Blender engine profile |
+| `VRMXT_materials_override` | parse/store (`kind`/`name`) | serialize (`kind`/`name`) | stub | Must switch to `idType`/`id` (UniVRMXT already emits that). No production files on old names — replace, don't dual-read. See [Blender Materials Override](https://github.com/miramocha/Extended-VRM-Specs/blob/main/implementations/blender-materials-override.md). |
 
 ## Requirements
 

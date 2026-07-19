@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Docs: materials override still on `kind`/`name`; switch to `idType`/`id` after
+  UniVRMXT merge (no dual-read — nothing in production uses the old names)
 - VFX Geometry Nodes viewport preview after import (shared `VRMXT_Particle` group;
   Empty attachment helper + child mesh for the modifier)
 - Preview ownership uses stable armature UUID (rename-safe); unique Empty/material
