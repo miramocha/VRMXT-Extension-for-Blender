@@ -2,9 +2,8 @@
 
 ## Unreleased
 
-- Materials override: `idType`/`id` (+ Unreal `materialSet`, optional `properties[]`);
-  drop legacy `kind`/`name`. Import/export store and write verbatim JSON so Unity
-  round-trip does not depend on typed parse. Readonly Material PROPERTIES panel.
+- Materials override: `idType`/`id` (+ optional `properties[]`); import/export store
+  extension JSON on the Blender material. Readonly Material PROPERTIES panel.
 - VFX Geometry Nodes viewport preview after import (shared `VRMXT_Particle` group;
   Empty attachment helper + child mesh for the modifier)
 - Preview ownership uses stable armature UUID (rename-safe); unique Empty/material
