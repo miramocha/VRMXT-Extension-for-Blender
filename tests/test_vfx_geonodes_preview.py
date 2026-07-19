@@ -41,9 +41,7 @@ class TestVfxPreviewNaming(unittest.TestCase):
 
     def test_is_preview_object_reads_custom_prop(self) -> None:
         tagged = SimpleNamespace(
-            get=lambda key, default=None: (
-                1 if key == PREVIEW_CUSTOM_PROP else default
-            )
+            get=lambda key, default=None: 1 if key == PREVIEW_CUSTOM_PROP else default
         )
         plain = SimpleNamespace(get=lambda key, default=None: default)
         self.assertTrue(is_preview_object(tagged))
@@ -105,9 +103,7 @@ class TestVfxPreviewOwnership(unittest.TestCase):
 class TestVfxPreviewExportIsolation(unittest.TestCase):
     def test_resolve_node_index_rejects_preview_object(self) -> None:
         preview = SimpleNamespace(
-            get=lambda key, default=None: (
-                1 if key == PREVIEW_CUSTOM_PROP else default
-            )
+            get=lambda key, default=None: 1 if key == PREVIEW_CUSTOM_PROP else default
         )
         self.assertIsNone(
             resolve_node_index(
