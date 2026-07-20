@@ -61,7 +61,9 @@ def _set_active_override(settings: object, index: int) -> None:
 def _active_slot(settings: object):
     if settings is None or len(settings.overrides) == 0:
         return None
-    index = max(0, min(int(settings.active_override_index), len(settings.overrides) - 1))
+    index = max(
+        0, min(int(settings.active_override_index), len(settings.overrides) - 1)
+    )
     _set_active_override(settings, index)
     return settings.overrides[index]
 
@@ -100,10 +102,7 @@ if bpy is not None:
                 return {"CANCELLED"}
 
             for existing in settings.overrides:
-                if (
-                    existing.engine == engine
-                    and (existing.variant or "") == variant
-                ):
+                if existing.engine == engine and (existing.variant or "") == variant:
                     self.report(
                         {"ERROR"},
                         f"Override already exists for {engine} / {variant}",

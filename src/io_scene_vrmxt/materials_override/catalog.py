@@ -138,7 +138,9 @@ def load_shader_catalogs() -> tuple[ShaderCatalog, ...]:
             continue
         parsed = _parse_catalog(path, catalog_dict)
         if parsed is None:
-            logger.warning("Materials override catalog %s missing required fields", path.name)
+            logger.warning(
+                "Materials override catalog %s missing required fields", path.name
+            )
             continue
         catalogs.append(parsed)
     return tuple(catalogs)

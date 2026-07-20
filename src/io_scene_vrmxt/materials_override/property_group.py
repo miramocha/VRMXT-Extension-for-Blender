@@ -86,9 +86,7 @@ else:
         _OVERRIDE_SLOT_ITEMS_CACHE.clear()
         overrides = getattr(self, "overrides", None)
         if overrides is None or len(overrides) == 0:
-            _OVERRIDE_SLOT_ITEMS_CACHE.append(
-                ("0", "(none)", "No override slots")
-            )
+            _OVERRIDE_SLOT_ITEMS_CACHE.append(("0", "(none)", "No override slots"))
         else:
             for i, slot in enumerate(overrides):
                 _OVERRIDE_SLOT_ITEMS_CACHE.append(
