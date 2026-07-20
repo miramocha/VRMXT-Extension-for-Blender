@@ -9,6 +9,7 @@ not be inferred back into VFX data.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import re
 import uuid
@@ -113,9 +114,7 @@ def _preview_belongs_to_armature(
         if owner == armature_id:
             return True
         # Legacy helpers tagged with armature name before UUID ownership.
-        if owner == getattr(armature_object, "name", ""):
-            return True
-        return False
+        return owner == getattr(armature_object, "name", "")
     # Untagged parent chain fallback (legacy).
     if obj.parent == armature_object:
         return True
@@ -577,7 +576,7 @@ def _target_collection(armature_object: Any, context: Any) -> Any:
 def _ensure_emitter_material(armature_object: Any, emitter: Any, index: int) -> Any:
     assert bpy is not None
     arm_safe = _safe_token(getattr(armature_object, "name", ""), "Armature")
-    emitter_safe = _safe_token(getattr(emitter, "name", ""), f"Emitter")
+    emitter_safe = _safe_token(getattr(emitter, "name", ""), "Emitter")
     mat_name = f"{MATERIAL_NAME_PREFIX}{arm_safe}_{index:03d}_{emitter_safe}"
     material = bpy.data.materials.get(mat_name)
     if material is None:
@@ -669,15 +668,11 @@ def _configure_material_transparency(material: Any) -> None:
         try:
             material.blend_method = "BLEND"
         except TypeError:
-            try:
+            with contextlib.suppress(TypeError):
                 material.blend_method = "HASHED"
-            except TypeError:
-                pass
     if hasattr(material, "surface_render_method"):
-        try:
+        with contextlib.suppress(TypeError):
             material.surface_render_method = "BLENDED"
-        except TypeError:
-            pass
 
 
 def _set_modifier_input(modifier: Any, identifier: str, value: Any) -> None:

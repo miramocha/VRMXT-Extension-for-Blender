@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import contextlib
+
 from ..common.constants import ENGINE_UNITY, ENGINE_UNREAL, ID_TYPE_SHADER_NAME
 from .catalog import CUSTOM_SHADER_ENUM, catalogs_for_variant, find_catalog_by_key
 
@@ -173,7 +175,7 @@ else:
         )
 
     class VrmxtMaterialsOverrideEntry(PropertyGroup):  # type: ignore[misc]
-        """One ``overrides[]`` slot. Engine/variant set at Add time; not edited later."""
+        """One ``overrides[]`` slot. Engine/variant set at Add; not edited later."""
 
         engine: EnumProperty(  # type: ignore[valid-type]
             name="Engine",
@@ -269,10 +271,8 @@ def unregister() -> None:
         VrmxtMaterialsOverrideEntry,
         VrmxtMaterialsOverridePropertyItem,
     ):
-        try:
+        with contextlib.suppress(RuntimeError):
             bpy.utils.unregister_class(cls)
-        except RuntimeError:
-            pass
 
 
 __all__ = [

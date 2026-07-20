@@ -64,7 +64,7 @@ def populate_groups_from_extension(
     material: Any,
     extension: VrmxtMaterialsOverride,
 ) -> None:
-    """Replace PropertyGroups from a parsed extension (bindings kept only in raw_json)."""
+    """Replace PropertyGroups from a parsed extension (bindings stay in raw_json)."""
     settings = _settings_of(material)
     if settings is None:
         return
@@ -217,7 +217,7 @@ def groups_to_extension(material: Any) -> VrmxtMaterialsOverride | None:
 
 
 def sync_raw_json_from_groups(material: Any) -> str | None:
-    """Serialize authored groups into ``raw_json`` + custom prop. Returns JSON or None."""
+    """Write authored groups to ``raw_json`` + custom prop. Return JSON or None."""
     settings = _settings_of(material)
     if settings is None or not settings.authored:
         return None

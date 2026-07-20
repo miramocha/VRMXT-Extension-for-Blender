@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from typing import ClassVar
 
 from ..common.constants import ENGINE_UNITY, ID_TYPE_SHADER_NAME
@@ -314,10 +315,8 @@ def unregister() -> None:
     if bpy is None:
         return
     for cls in reversed(CLASSES):
-        try:
+        with contextlib.suppress(RuntimeError):
             bpy.utils.unregister_class(cls)
-        except RuntimeError:
-            pass
 
 
 __all__ = [
