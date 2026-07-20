@@ -290,6 +290,14 @@ def _parse_override(raw: Mapping[str, Json]) -> MaterialOverride | None:
     )
 
 
+def _selection_key(override: MaterialOverride) -> str:
+    """Unique key among sibling overrides (engine, or engine+variant for Unity)."""
+    if override.engine == ENGINE_UNITY and isinstance(override.material, UnityMaterial):
+        variant = override.material.variant or ""
+        return f"{ENGINE_UNITY}\0{variant}"
+    return override.engine
+
+
 def parse_materials_override(
     extension_dict: Mapping[str, Json],
 ) -> VrmxtMaterialsOverride | None:
@@ -302,7 +310,9 @@ def parse_materials_override(
         return None
 
     overrides: list[MaterialOverride] = []
-    seen_engines: set[str] = set()
+    # Selection key: engine alone, or (engine, material.variant) for Unity
+    # (matches UniVRMXT / base-spec rules 6–7).
+    seen_selection_keys: set[str] = set()
     for item in overrides_raw:
         override_dict = as_dict(item)
         if override_dict is None:
@@ -310,9 +320,10 @@ def parse_materials_override(
         override = _parse_override(override_dict)
         if override is None:
             return None
-        if override.engine in seen_engines:
+        selection_key = _selection_key(override)
+        if selection_key in seen_selection_keys:
             return None
-        seen_engines.add(override.engine)
+        seen_selection_keys.add(selection_key)
         overrides.append(override)
 
     if not overrides:

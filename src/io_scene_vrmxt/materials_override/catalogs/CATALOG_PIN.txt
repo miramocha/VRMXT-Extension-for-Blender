@@ -1,0 +1,4 @@
+﻿specs-commit: local-copy
+source: Extended-VRM-Specs/references/catalogs/data
+liltoon-pin: 2.3.4
+vrmxt-test-override: UniVRMXT Samples~/TestMaterialsForOverrides

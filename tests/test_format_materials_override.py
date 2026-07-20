@@ -92,7 +92,7 @@ class TestFormatMaterialsOverride(unittest.TestCase):
         self.assertEqual(entry.material.id_type, ID_TYPE_MATERIAL_SET)
         self.assertEqual(entry.material.variants.opaque, "/Game/M_Opaque.M_Opaque")
 
-    def test_rejects_duplicate_engines(self) -> None:
+    def test_rejects_duplicate_unity_selection_keys(self) -> None:
         extension = {
             "specVersion": "1.0",
             "overrides": [
@@ -113,6 +113,33 @@ class TestFormatMaterialsOverride(unittest.TestCase):
             ],
         }
         self.assertIsNone(parse_materials_override(extension))
+
+    def test_accepts_unity_builtin_and_urp_siblings(self) -> None:
+        extension = {
+            "specVersion": "1.0",
+            "overrides": [
+                {
+                    "engine": ENGINE_UNITY,
+                    "material": {
+                        "idType": ID_TYPE_SHADER_NAME,
+                        "id": "lilToon",
+                        "variant": "builtin",
+                    },
+                },
+                {
+                    "engine": ENGINE_UNITY,
+                    "material": {
+                        "idType": ID_TYPE_SHADER_NAME,
+                        "id": "lilToon",
+                        "variant": "urp",
+                    },
+                },
+            ],
+        }
+        override = parse_materials_override(extension)
+        self.assertIsNotNone(override)
+        assert override is not None
+        self.assertEqual(len(override.overrides), 2)
 
     def test_rejects_empty_overrides(self) -> None:
         extension = {"specVersion": "1.0", "overrides": []}
@@ -273,12 +300,12 @@ class TestMaterialsOverrideHooks(unittest.TestCase):
 
         import io_scene_vrmxt.materials_override.export_hook as export_hook
 
-        original_iter = export_hook._iter_scene_materials
-        export_hook._iter_scene_materials = lambda _ctx: [_Mat()]  # type: ignore[assignment]
+        original_find = export_hook._find_material_by_name
+        export_hook._find_material_by_name = lambda _name: _Mat()  # type: ignore[assignment]
         try:
             apply_materials_override_export(context)
         finally:
-            export_hook._iter_scene_materials = original_iter  # type: ignore[assignment]
+            export_hook._find_material_by_name = original_find  # type: ignore[assignment]
 
         extensions = material_dict.get("extensions")
         assert isinstance(extensions, dict)
