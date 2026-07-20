@@ -1,4 +1,5 @@
 ﻿specs-commit: local-copy
 source: Extended-VRM-Specs/references/catalogs/data
 liltoon-pin: 2.3.4
+liltoon-warudo-pin: 1.10.3
 vrmxt-test-override: UniVRMXT Samples~/TestMaterialsForOverrides
