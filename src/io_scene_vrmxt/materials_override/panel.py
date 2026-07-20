@@ -1,19 +1,14 @@
 # SPDX-License-Identifier: MIT
-"""Readonly Material PROPERTIES panel for VRMXT_materials_override."""
+"""Material PROPERTIES panel for VRMXT_materials_override authoring."""
 
 from __future__ import annotations
 
-import json
+import contextlib
 from typing import ClassVar
 
-from ..common.json_util import as_dict
-from ..format.materials_override import (
-    UnityMaterial,
-    UnrealMaterial,
-    VrmxtMaterialsOverride,
-    parse_materials_override,
-)
-from .import_hook import CUSTOM_PROP_KEY
+from .catalog import CUSTOM_SHADER_ENUM, find_catalog_by_key
+from .property_group import engine_ui_label, variant_ui_label
+from .sync import CUSTOM_PROP_KEY
 
 try:
     import bpy
@@ -25,22 +20,10 @@ except ImportError:  # pragma: no cover
     UILayout = object  # type: ignore[misc, assignment]
 
 
-# Peer-depend on Extended VRM material panel when that add-on is enabled.
 VRM_MATERIAL_PANEL_ID = "VRM_PT_vrm_material_property"
 
 
-def _read_raw_json(material: object) -> str:
-    if hasattr(material, "vrmxt_materials_override_settings"):
-        settings = material.vrmxt_materials_override_settings
-        raw = getattr(settings, "raw_json", "") or ""
-        if raw:
-            return str(raw)
-    if CUSTOM_PROP_KEY in material:
-        return str(material[CUSTOM_PROP_KEY])
-    return ""
-
-
-def _active_material(context: Context) -> object | None:
+def _active_material(context: Context):
     material = getattr(context, "material", None)
     if material is not None:
         return material
@@ -50,99 +33,102 @@ def _active_material(context: Context) -> object | None:
     return getattr(obj, "active_material", None)
 
 
-def _format_property_value(prop: object) -> str:
-    prop_type = getattr(prop, "type", "")
-    if prop_type == "texture":
-        return f"texture[{getattr(prop, 'texture', None)}]"
-    value = getattr(prop, "value", None)
-    return str(value)
+def _draw_property_row(layout: UILayout, item: object, property_index: int) -> None:
+    row = layout.row(align=True)
+    row.label(text=str(getattr(item, "name", "")))
+    prop_type = getattr(item, "prop_type", "scalar")
+    if prop_type == "scalar":
+        row.prop(item, "value_float", text="")
+    elif prop_type == "vector":
+        row.prop(item, "value_vector", text="")
+    elif prop_type == "texture":
+        row.prop(item, "image", text="")
+    elif prop_type == "shaderFeature":
+        row.prop(item, "value_bool", text="")
+    else:
+        row.label(text=str(prop_type))
+    op = row.operator(
+        "vrmxt.materials_override_remove_property",
+        text="",
+        icon="X",
+    )
+    op.property_index = property_index
 
 
-def _draw_unity_material(layout: UILayout, material: UnityMaterial) -> None:
-    layout.label(text=f"idType: {material.id_type}")
-    layout.label(text=f"id: {material.id}")
-    if material.variant is not None:
-        layout.label(text=f"variant: {material.variant}")
-    if material.provider is not None:
-        provider_text = material.provider.id
-        if material.provider.version:
-            provider_text = f"{provider_text}@{material.provider.version}"
-        layout.label(text=f"provider: {provider_text}")
+def _draw_slot(layout: UILayout, slot: object) -> None:
+    box = layout.box()
+    # Engine / variant locked after Add — display only.
+    box.label(text=f"Engine: {engine_ui_label(getattr(slot, 'engine', ''))}")
+    if getattr(slot, "engine", "") == "unity":
+        box.label(text=f"Variant: {variant_ui_label(getattr(slot, 'variant', ''))}")
+        box.prop(slot, "shader_enum")
+        if getattr(slot, "shader_enum", "") == CUSTOM_SHADER_ENUM:
+            box.prop(slot, "material_id")
+        else:
+            catalog = find_catalog_by_key(getattr(slot, "catalog_key", "") or "")
+            if catalog is not None:
+                box.label(text=f"id: {catalog.shader_name}")
+            elif getattr(slot, "material_id", ""):
+                box.label(text=f"id: {slot.material_id}")
+    else:
+        box.label(text="Unreal authoring not available yet")
 
+    props_box = box.box()
+    props_box.label(text="Properties")
+    row = props_box.row(align=True)
+    catalog = find_catalog_by_key(getattr(slot, "catalog_key", "") or "")
+    common_enabled = catalog is not None and any(p.common for p in catalog.properties)
+    sub = row.row(align=True)
+    sub.enabled = common_enabled
+    sub.operator(
+        "vrmxt.materials_override_add_common_props",
+        text="Add Common Props",
+        icon="ADD",
+    )
+    row.operator(
+        "vrmxt.materials_override_add_property",
+        text="Add",
+        icon="ADD",
+    )
 
-def _draw_unreal_material(layout: UILayout, material: UnrealMaterial) -> None:
-    layout.label(text=f"idType: {material.id_type}")
-    variants = material.variants
-    if variants.opaque is not None:
-        layout.label(text=f"opaque: {variants.opaque}")
-    if variants.opaque_two_sided is not None:
-        layout.label(text=f"opaqueTwoSided: {variants.opaque_two_sided}")
-    if variants.translucent is not None:
-        layout.label(text=f"translucent: {variants.translucent}")
-    if variants.translucent_two_sided is not None:
-        layout.label(text=f"translucentTwoSided: {variants.translucent_two_sided}")
-    if material.provider is not None:
-        provider_text = material.provider.id
-        if material.provider.version:
-            provider_text = f"{provider_text}@{material.provider.version}"
-        layout.label(text=f"provider: {provider_text}")
-
-
-def _draw_parsed_override(layout: UILayout, extension: VrmxtMaterialsOverride) -> None:
-    layout.label(text=f"specVersion: {extension.spec_version}")
-    for entry in extension.overrides:
-        box = layout.box()
-        box.label(text=f"engine: {entry.engine}")
-        if isinstance(entry.material, UnityMaterial):
-            _draw_unity_material(box, entry.material)
-        elif isinstance(entry.material, UnrealMaterial):
-            _draw_unreal_material(box, entry.material)
-
-        if entry.bindings:
-            bind_box = box.box()
-            bind_box.label(text="Bindings")
-            for binding in entry.bindings:
-                bind_box.label(
-                    text=(
-                        f"{binding.source} → {binding.target} ({binding.target_type})"
-                    )
-                )
-
-        if entry.properties:
-            prop_box = box.box()
-            prop_box.label(text="Properties")
-            for prop in entry.properties:
-                prop_box.label(
-                    text=(f"{prop.name}: {_format_property_value(prop)} ({prop.type})")
-                )
+    if len(slot.properties) == 0:
+        props_box.label(text="No properties")
+    else:
+        for index, item in enumerate(slot.properties):
+            _draw_property_row(props_box.row(align=True), item, index)
 
 
 def draw_materials_override_layout(layout: UILayout, material: object) -> None:
-    raw_json = _read_raw_json(material)
-    if not raw_json:
-        layout.label(text="No VRMXT materials override")
+    settings = getattr(material, "vrmxt_materials_override_settings", None)
+    if settings is None:
+        layout.label(text="Materials override settings unavailable")
         return
 
-    try:
-        parsed_json = json.loads(raw_json)
-    except json.JSONDecodeError:
-        layout.label(text="Stored (invalid JSON)")
+    # Staging: pick Engine + Variant, then Add.
+    staging = layout.row(align=True)
+    staging.prop(settings, "add_engine", text="")
+    staging.prop(settings, "add_variant", text="")
+    staging.operator("vrmxt.materials_override_add", text="Add Override", icon="ADD")
+
+    if len(settings.overrides) == 0:
+        raw = settings.raw_json or ""
+        if not raw and CUSTOM_PROP_KEY in material:
+            raw = str(material[CUSTOM_PROP_KEY])
+        if raw and not settings.authored:
+            layout.label(text="Stored override (uneditable / Unreal or unparsed)")
+            preview = raw if len(raw) <= 80 else raw[:77] + "..."
+            layout.label(text=preview)
+        else:
+            layout.label(text="No override slots — pick Engine / Variant, then Add")
         return
 
-    extension_dict = as_dict(parsed_json)
-    if extension_dict is None:
-        layout.label(text="Stored (unparsed)")
-        return
-
-    extension = parse_materials_override(extension_dict)
-    if extension is None:
-        layout.label(text="Stored (unparsed)")
-        layout.label(text="Export still round-trips this JSON.")
-        preview = raw_json if len(raw_json) <= 80 else raw_json[:77] + "..."
-        layout.label(text=preview)
-        return
-
-    _draw_parsed_override(layout, extension)
+    slot_row = layout.row(align=True)
+    slot_row.prop(settings, "override_slot", text="Override")
+    slot_row.operator("vrmxt.materials_override_remove", text="", icon="REMOVE")
+    index = int(getattr(settings, "active_override_index", 0) or 0)
+    index = max(0, min(index, len(settings.overrides) - 1))
+    slot = settings.overrides[index]
+    _draw_slot(layout, slot)
 
 
 if bpy is not None:
@@ -158,8 +144,6 @@ if bpy is not None:
 
         @classmethod
         def poll(cls, context: Context) -> bool:
-            # Always show for the active material so the panel is discoverable
-            # even before an override is imported (draw shows empty state).
             return _active_material(context) is not None
 
         def draw_header(self, _context: Context) -> None:
@@ -188,7 +172,8 @@ def unregister() -> None:
     if bpy is None:
         return
     for cls in reversed(CLASSES):
-        bpy.utils.unregister_class(cls)
+        with contextlib.suppress(RuntimeError):
+            bpy.utils.unregister_class(cls)
 
 
 __all__ = [

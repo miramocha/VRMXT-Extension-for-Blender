@@ -19,8 +19,8 @@ from ..format.vfx import (
     VrmxtVfxEmitter,
     write_vfx_to_gltf,
 )
-from .gltf_texture import ensure_vfx_texture_index
 from .geonodes_preview import is_preview_object
+from .gltf_texture import ensure_vfx_texture_index
 from .property_group import (
     ATTACHMENT_TYPE_BONE,
     ATTACHMENT_TYPE_OBJECT,

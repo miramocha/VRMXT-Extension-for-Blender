@@ -9,16 +9,16 @@ from typing import Any
 
 from ..common.constants import EXTENSION_MATERIALS_OVERRIDE
 from ..common.json_util import Json, as_dict, as_list
+from .sync import CUSTOM_PROP_KEY, populate_groups_from_raw_json
 
 logger = logging.getLogger(__name__)
-
-CUSTOM_PROP_KEY = "vrmxt_materials_override"
 
 
 def _set_material_override_json(material: Any, payload: dict[str, Json]) -> None:
     serialized = json.dumps(payload)
     if hasattr(material, "vrmxt_materials_override_settings"):
         material.vrmxt_materials_override_settings.raw_json = serialized
+        populate_groups_from_raw_json(material, serialized)
     material[CUSTOM_PROP_KEY] = serialized
 
 
@@ -44,7 +44,7 @@ def apply_materials_override_import(context: Any) -> None:
             continue
 
         # Store the original extension JSON verbatim so round-trip does not
-        # depend on typed parse succeeding.
+        # depend on typed parse succeeding; also fill PropertyGroups when parseable.
         _set_material_override_json(blender_material, extension_dict)
 
 
