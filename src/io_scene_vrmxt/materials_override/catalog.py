@@ -126,7 +126,7 @@ def load_shader_catalogs() -> tuple[ShaderCatalog, ...]:
         return ()
 
     catalogs: list[ShaderCatalog] = []
-    for path in sorted(CATALOGS_DIR.glob("*.json")):
+    for path in sorted(CATALOGS_DIR.glob("*.json"), key=lambda item: item.stem):
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
