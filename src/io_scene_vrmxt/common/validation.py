@@ -18,6 +18,15 @@ def is_finite_non_negative(value: object) -> bool:
     return value >= 0
 
 
+def is_finite_positive(value: object) -> bool:
+    """Return True when *value* is a finite number strictly greater than zero."""
+    if not isinstance(value, (int, float)):
+        return False
+    if not math.isfinite(value):
+        return False
+    return value > 0
+
+
 def is_positive_int(value: object) -> bool:
     """Return True when *value* is an integer greater than or equal to one."""
     if isinstance(value, bool) or not isinstance(value, int):
@@ -25,4 +34,4 @@ def is_positive_int(value: object) -> bool:
     return value >= 1
 
 
-__all__ = ["is_finite_non_negative", "is_positive_int"]
+__all__ = ["is_finite_non_negative", "is_finite_positive", "is_positive_int"]

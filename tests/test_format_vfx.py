@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Tests for VRMXT_vfx format parsing and serialization."""
+"""Tests for VRMXT_sprite_particle format parsing and serialization."""
 
 from __future__ import annotations
 
@@ -7,11 +7,14 @@ import json
 import unittest
 from pathlib import Path
 
-from io_scene_vrmxt.common.constants import EXTENSION_VRMXT_VFX, SPEC_VERSION_1_0
+from io_scene_vrmxt.common.constants import (
+    EXTENSION_VRMXT_SPRITE_PARTICLE,
+    SPEC_VERSION_1_0,
+)
 from io_scene_vrmxt.format.vfx import (
     DEFAULT_EMISSION_RATE,
     DEFAULT_MAX_PARTICLES,
-    ParticleParams,
+    DEFAULT_SIZE,
     VrmxtVfx,
     VrmxtVfxEmitter,
     parse_vfx,
@@ -28,7 +31,7 @@ class TestFormatVfx(unittest.TestCase):
         payload = json.loads(
             (RESOURCES / "vfx_minimal.json").read_text(encoding="utf-8")
         )
-        extension = payload["extensions"][EXTENSION_VRMXT_VFX]
+        extension = payload["extensions"][EXTENSION_VRMXT_SPRITE_PARTICLE]
         vfx = parse_vfx(extension, node_count=3)
         self.assertIsNotNone(vfx)
         assert vfx is not None
@@ -37,97 +40,106 @@ class TestFormatVfx(unittest.TestCase):
         emitter = vfx.emitters[0]
         self.assertEqual(emitter.name, "HandSpark")
         self.assertEqual(emitter.node, 1)
-        self.assertIsNotNone(emitter.particle)
-        assert emitter.particle is not None
-        self.assertEqual(emitter.particle.emission_rate, 20.0)
-        self.assertEqual(emitter.particle.max_particles, 32)
+        self.assertEqual(emitter.emission_rate, 20.0)
+        self.assertEqual(emitter.max_particles, 32)
+        self.assertEqual(emitter.size, (0.04, 0.04))
+        self.assertEqual(emitter.color, (1.0, 0.85, 0.4, 1.0))
+        self.assertNotIn("type", extension["emitters"][0])
+        self.assertNotIn("particle", extension["emitters"][0])
+        self.assertNotIn("localPosition", extension["emitters"][0])
 
     def test_parse_applies_defaults(self) -> None:
         extension = {
             "specVersion": "1.0",
             "emitters": [
                 {
-                    "type": "particle",
                     "node": 0,
-                    "particle": {},
                 }
             ],
         }
         vfx = parse_vfx(extension, node_count=1)
         self.assertIsNotNone(vfx)
         assert vfx is not None
-        particle = vfx.emitters[0].particle
-        self.assertIsNotNone(particle)
-        assert particle is not None
-        self.assertEqual(particle.emission_rate, DEFAULT_EMISSION_RATE)
-        self.assertEqual(particle.max_particles, DEFAULT_MAX_PARTICLES)
+        emitter = vfx.emitters[0]
+        self.assertEqual(emitter.emission_rate, DEFAULT_EMISSION_RATE)
+        self.assertEqual(emitter.max_particles, DEFAULT_MAX_PARTICLES)
+        self.assertEqual(emitter.size, DEFAULT_SIZE)
 
     def test_parse_skips_invalid_emitters(self) -> None:
         extension = {
             "specVersion": "1.0",
             "emitters": [
-                {"type": "ribbon", "node": 0},
-                {
-                    "type": "particle",
-                    "node": 99,
-                    "particle": {"emissionRate": 1.0},
-                },
-                {
-                    "type": "particle",
-                    "node": 0,
-                    "particle": {"emissionRate": -1.0},
-                },
-                {
-                    "type": "particle",
-                    "node": 0,
-                    "particle": {"emissionRate": 5.0},
-                },
+                {"node": 99, "emissionRate": 1.0},
+                {"node": 0, "emissionRate": -1.0},
+                {"node": 0, "size": [0.0, 0.05]},
+                {"node": 0, "color": [1.0, 1.0, 1.0, 2.0]},
+                {"node": 0, "texture": 9},
+                {"node": 0, "emissionRate": 5.0},
             ],
         }
-        vfx = parse_vfx(extension, node_count=1)
+        vfx = parse_vfx(extension, node_count=1, texture_count=1)
         self.assertIsNotNone(vfx)
         assert vfx is not None
         self.assertEqual(len(vfx.emitters), 1)
-        self.assertEqual(vfx.emitters[0].particle.emission_rate, 5.0)
+        self.assertEqual(vfx.emitters[0].emission_rate, 5.0)
 
     def test_parse_rejects_wrong_spec_version(self) -> None:
         extension = {"specVersion": "2.0", "emitters": []}
         self.assertIsNone(parse_vfx(extension))
 
+    def test_read_ignores_legacy_roots(self) -> None:
+        for legacy_name in ("VRMXT_vfx", "VRMXT_particle"):
+            with self.subTest(root=legacy_name):
+                json_dict = {
+                    "nodes": [{}],
+                    "extensionsUsed": [legacy_name],
+                    "extensions": {
+                        legacy_name: {
+                            "specVersion": "1.0",
+                            "emitters": [{"node": 0, "emissionRate": 5.0}],
+                        }
+                    },
+                }
+                self.assertIsNone(read_vfx_from_gltf(json_dict, node_count=1))
+
     def test_serialize_round_trip(self) -> None:
         vfx = VrmxtVfx(
             emitters=[
                 VrmxtVfxEmitter(
-                    type="particle",
                     node=2,
                     name="Spark",
-                    particle=ParticleParams(emission_rate=15.0),
+                    emission_rate=15.0,
+                    size=(0.03, 0.06),
                 )
             ]
         )
         serialized = serialize_vfx(vfx)
+        self.assertNotIn("type", serialized["emitters"][0])
+        self.assertNotIn("particle", serialized["emitters"][0])
+        self.assertNotIn("localPosition", serialized["emitters"][0])
+        self.assertEqual(serialized["emitters"][0]["size"], [0.03, 0.06])
         parsed = parse_vfx(serialized, node_count=3)
         self.assertIsNotNone(parsed)
         assert parsed is not None
         self.assertEqual(parsed.emitters[0].node, 2)
-        self.assertEqual(parsed.emitters[0].particle.emission_rate, 15.0)
+        self.assertEqual(parsed.emitters[0].emission_rate, 15.0)
+        self.assertEqual(parsed.emitters[0].size, (0.03, 0.06))
 
     def test_write_vfx_to_gltf(self) -> None:
         json_dict: dict[str, object] = {"nodes": [{}, {}]}
         vfx = VrmxtVfx(
             emitters=[
                 VrmxtVfxEmitter(
-                    type="particle",
                     node=0,
-                    particle=ParticleParams(),
                 )
             ]
         )
         write_vfx_to_gltf(json_dict, vfx)
-        self.assertIn(EXTENSION_VRMXT_VFX, json_dict["extensionsUsed"])  # type: ignore[index]
+        self.assertIn(EXTENSION_VRMXT_SPRITE_PARTICLE, json_dict["extensionsUsed"])  # type: ignore[index]
         required = json_dict.get("extensionsRequired")
         if isinstance(required, list):
-            self.assertNotIn(EXTENSION_VRMXT_VFX, required)
+            self.assertNotIn(EXTENSION_VRMXT_SPRITE_PARTICLE, required)
+        self.assertIn(EXTENSION_VRMXT_SPRITE_PARTICLE, json_dict["extensions"])  # type: ignore[index]
         read_back = read_vfx_from_gltf(json_dict, node_count=1)
         self.assertIsNotNone(read_back)
         assert read_back is not None

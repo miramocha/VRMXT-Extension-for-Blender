@@ -1,10 +1,14 @@
 # SPDX-License-Identifier: MIT
-"""Geometry Nodes viewport preview for VRMXT_vfx particle emitters.
+"""Geometry Nodes viewport preview for VRMXT_sprite_particle emitters.
 
 Property groups remain the export source of truth. Preview helpers are tagged
 with ``PREVIEW_CUSTOM_PROP`` (VRMXT lifecycle) and
 ``EXCLUDE_FROM_EXPORT_CUSTOM_PROP`` (host ``export_objects`` filter) and must
-not be inferred back into VFX data.
+not be inferred back into VFX data. Preview sprite geometry is never exported.
+
+Preview motion uses node local +Y velocity. Sprite size is rectangular
+(``size[0]`` × ``size[1]``). Offsets come from the attachment object's
+transform (bone or helper Empty), not emitter-local fields.
 """
 
 from __future__ import annotations
@@ -20,7 +24,7 @@ from .property_group import ATTACHMENT_TYPE_BONE, ATTACHMENT_TYPE_OBJECT
 logger = logging.getLogger(__name__)
 
 NODE_GROUP_NAME = "VRMXT_Particle"
-NODE_GROUP_VERSION = 6
+NODE_GROUP_VERSION = 7
 PREVIEW_CUSTOM_PROP = "vrmxt_vfx_preview"
 # Host contract (Extended VRM ``export_objects``). Soft-import when available.
 EXCLUDE_FROM_EXPORT_CUSTOM_PROP = "vrm_exclude_from_export"
@@ -37,8 +41,8 @@ except ImportError:
 ARMATURE_PREVIEW_ID_PROP = "vrmxt_vfx_id"
 PREVIEW_ARMATURE_PROP = "vrmxt_vfx_preview_armature"
 PREVIEW_EMITTER_PROP = "vrmxt_vfx_preview_emitter"
-OBJECT_NAME_PREFIX = "VRMXT_vfx_"
-MATERIAL_NAME_PREFIX = "VRMXT_vfx_mat_"
+OBJECT_NAME_PREFIX = "VRMXT_sprite_"
+MATERIAL_NAME_PREFIX = "VRMXT_sprite_mat_"
 MODIFIER_NAME = "VRMXT_Particle"
 # Legacy leftover from free-viewport billboard sync (removed; delete on clear).
 _LEGACY_VIEWPORT_VIEW_NAME = "VRMXT_vfx_viewport_view"
@@ -47,11 +51,8 @@ _SAFE_NAME_RE = re.compile(r"[^A-Za-z0-9_.-]+")
 
 try:
     import bpy
-    from mathutils import Quaternion, Vector
 except ImportError:  # pragma: no cover - exercised only outside Blender
     bpy = None  # type: ignore[assignment]
-    Quaternion = None  # type: ignore[misc, assignment]
-    Vector = None  # type: ignore[misc, assignment]
 
 
 def is_preview_object(obj: Any) -> bool:
@@ -223,8 +224,6 @@ def rebuild_vfx_preview(armature_object: Any, *, context: Any | None = None) -> 
 
     created = 0
     for index, emitter in enumerate(emitters):
-        if getattr(emitter, "emitter_type", "particle") != "particle":
-            continue
         helper = _spawn_emitter_preview(
             armature_object=armature_object,
             emitter=emitter,
@@ -253,7 +252,8 @@ def _populate_particle_node_group(ng: Any) -> Any:
     add_in("Emission Rate", "NodeSocketFloat", 10.0)
     add_in("Max Particles", "NodeSocketInt", 64)
     add_in("Lifetime", "NodeSocketFloat", 1.0)
-    add_in("Start Size", "NodeSocketFloat", 0.05)
+    add_in("Size X", "NodeSocketFloat", 0.05)
+    add_in("Size Y", "NodeSocketFloat", 0.05)
     add_in("Start Speed", "NodeSocketFloat", 0.1)
     iface.new_socket(name="Material", in_out="INPUT", socket_type="NodeSocketMaterial")
     iface.new_socket(name="Geometry", in_out="OUTPUT", socket_type="NodeSocketGeometry")
@@ -423,11 +423,12 @@ def _populate_particle_node_group(ng: Any) -> Any:
     link(store_uv.outputs["Geometry"], grid_xf.inputs["Geometry"])
     link(grid_rot_e.outputs["Rotation"], grid_xf.inputs["Rotation"])
 
+    # Mesh Grid is rotated to XZ (normal +Y). Scale X = width, Z = height.
     combine_s = nodes.new("ShaderNodeCombineXYZ")
     combine_s.location = (800, -400)
-    link(in_n.outputs["Start Size"], combine_s.inputs["X"])
-    link(in_n.outputs["Start Size"], combine_s.inputs["Y"])
-    link(in_n.outputs["Start Size"], combine_s.inputs["Z"])
+    link(in_n.outputs["Size X"], combine_s.inputs["X"])
+    combine_s.inputs["Y"].default_value = 1.0
+    link(in_n.outputs["Size Y"], combine_s.inputs["Z"])
 
     iop = nodes.new("GeometryNodeInstanceOnPoints")
     iop.location = (1000, -200)
@@ -457,8 +458,6 @@ def _spawn_emitter_preview(
     context: Any,
 ) -> Any | None:
     assert bpy is not None
-    assert Quaternion is not None
-    assert Vector is not None
 
     attachment_type = getattr(emitter, "attachment_type", ATTACHMENT_TYPE_BONE)
     parent_bone = ""
@@ -488,6 +487,13 @@ def _spawn_emitter_preview(
                 getattr(emitter, "name", ""),
             )
             return None
+        # Never parent a preview helper to another preview helper.
+        if is_preview_object(attachment_object):
+            logger.warning(
+                "VFX preview skip emitter %r: attachment is a preview helper",
+                getattr(emitter, "name", ""),
+            )
+            return None
         parent_object = attachment_object
     else:
         logger.warning(
@@ -502,6 +508,7 @@ def _spawn_emitter_preview(
     armature_id = _ensure_armature_preview_id(armature_object)
 
     # Empty owns attachment transform (Empties cannot host Geometry Nodes).
+    # Identity local transform: offsets live on the exportable attachment node.
     empty = bpy.data.objects.new(name, None)
     empty.empty_display_type = "PLAIN_AXES"
     empty.empty_display_size = 0.05
@@ -518,16 +525,10 @@ def _spawn_emitter_preview(
         empty.parent_bone = parent_bone
     else:
         empty.parent_type = "OBJECT"
-
-    loc = tuple(getattr(emitter, "local_position", (0.0, 0.0, 0.0)))
-    rot = tuple(getattr(emitter, "local_rotation", (0.0, 0.0, 0.0, 1.0)))
-    empty.location = Vector((float(loc[0]), float(loc[1]), float(loc[2])))
-    quat = Quaternion((float(rot[3]), float(rot[0]), float(rot[1]), float(rot[2])))
-    # Blender Quaternion is (w, x, y, z); spec stores xyzw.
-    if quat.magnitude > 0.0:
-        quat.normalize()
-        empty.rotation_mode = "QUATERNION"
-        empty.rotation_quaternion = quat
+    empty.location = (0.0, 0.0, 0.0)
+    empty.rotation_mode = "QUATERNION"
+    empty.rotation_quaternion = (1.0, 0.0, 0.0, 0.0)
+    empty.scale = (1.0, 1.0, 1.0)
 
     # Child mesh carries the Nodes modifier (base mesh has no faces).
     geo_name = f"{name}_geo"
@@ -549,13 +550,18 @@ def _spawn_emitter_preview(
     geo.rotation_mode = "QUATERNION"
     geo.rotation_quaternion = (1.0, 0.0, 0.0, 0.0)
 
+    size = tuple(getattr(emitter, "size", (0.05, 0.05)))
+    size_x = float(size[0]) if len(size) > 0 else 0.05
+    size_y = float(size[1]) if len(size) > 1 else size_x
+
     material = _ensure_emitter_material(armature_object, emitter, index)
     modifier = geo.modifiers.new(name=MODIFIER_NAME, type="NODES")
     modifier.node_group = node_group
     _set_modifier_input(modifier, "Emission Rate", float(emitter.emission_rate))
     _set_modifier_input(modifier, "Max Particles", int(emitter.max_particles))
     _set_modifier_input(modifier, "Lifetime", float(emitter.lifetime))
-    _set_modifier_input(modifier, "Start Size", float(emitter.start_size))
+    _set_modifier_input(modifier, "Size X", size_x)
+    _set_modifier_input(modifier, "Size Y", size_y)
     _set_modifier_input(modifier, "Start Speed", float(emitter.start_speed))
     _set_modifier_input(modifier, "Material", material)
 
@@ -590,7 +596,7 @@ def _ensure_emitter_material(armature_object: Any, emitter: Any, index: int) -> 
     links = nt.links
     nodes.clear()
 
-    color = tuple(getattr(emitter, "start_color", (1.0, 1.0, 1.0, 1.0)))
+    color = tuple(getattr(emitter, "color", (1.0, 1.0, 1.0, 1.0)))
     tint_rgb = (
         float(color[0]),
         float(color[1]),
@@ -629,7 +635,7 @@ def _ensure_emitter_material(armature_object: Any, emitter: Any, index: int) -> 
         tex.extension = "CLIP"
         links.new(uv.outputs["UV"], tex.inputs["Vector"])
 
-        # Color = texture.rgb × startColor.rgb
+        # Color = texture.rgb × color.rgb
         mul_color = nodes.new("ShaderNodeMix")
         mul_color.location = (-150, 100)
         mul_color.data_type = "RGBA"
@@ -645,7 +651,7 @@ def _ensure_emitter_material(armature_object: Any, emitter: Any, index: int) -> 
         b_col.default_value = tint_rgb
         links.new(result_col, emission.inputs["Color"])
 
-        # Alpha = texture.a × startColor.a
+        # Alpha = texture.a × color.a
         mul_alpha = nodes.new("ShaderNodeMath")
         mul_alpha.location = (-150, -80)
         mul_alpha.operation = "MULTIPLY"

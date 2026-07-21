@@ -1,13 +1,12 @@
 # SPDX-License-Identifier: MIT
-"""VRMXT_vfx root glTF extension parsing and serialization."""
+"""VRMXT_sprite_particle root glTF extension parsing and serialization."""
 
 from __future__ import annotations
 
-import math
 from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass, field
 
-from ..common.constants import EXTENSION_VRMXT_VFX, SPEC_VERSION_1_0
+from ..common.constants import EXTENSION_VRMXT_SPRITE_PARTICLE, SPEC_VERSION_1_0
 from ..common.json_util import (
     Json,
     as_dict,
@@ -19,39 +18,33 @@ from ..common.json_util import (
     finite_numbers,
     get_root_extension,
 )
-from ..common.validation import is_finite_non_negative, is_positive_int
+from ..common.validation import (
+    is_finite_non_negative,
+    is_finite_positive,
+    is_positive_int,
+)
 
-DEFAULT_LOCAL_POSITION = (0.0, 0.0, 0.0)
-DEFAULT_LOCAL_ROTATION = (0.0, 0.0, 0.0, 1.0)
+DEFAULT_SIZE = (0.05, 0.05)
+DEFAULT_COLOR = (1.0, 1.0, 1.0, 1.0)
 DEFAULT_EMISSION_RATE = 10.0
 DEFAULT_MAX_PARTICLES = 64
 DEFAULT_LIFETIME = 1.0
-DEFAULT_START_SIZE = 0.05
 DEFAULT_START_SPEED = 0.1
-DEFAULT_START_COLOR = (1.0, 1.0, 1.0, 1.0)
-
-EMITTER_TYPE_PARTICLE = "particle"
-
-
-@dataclass
-class ParticleParams:
-    texture: int | None = None
-    emission_rate: float = DEFAULT_EMISSION_RATE
-    max_particles: int = DEFAULT_MAX_PARTICLES
-    lifetime: float = DEFAULT_LIFETIME
-    start_size: float = DEFAULT_START_SIZE
-    start_speed: float = DEFAULT_START_SPEED
-    start_color: tuple[float, float, float, float] = DEFAULT_START_COLOR
 
 
 @dataclass
 class VrmxtVfxEmitter:
-    type: str
+    """Flat sprite-particle emitter (root ``VRMXT_sprite_particle`` entry)."""
+
     node: int
     name: str | None = None
-    local_position: tuple[float, float, float] = DEFAULT_LOCAL_POSITION
-    local_rotation: tuple[float, float, float, float] = DEFAULT_LOCAL_ROTATION
-    particle: ParticleParams | None = None
+    texture: int | None = None
+    size: tuple[float, float] = DEFAULT_SIZE
+    color: tuple[float, float, float, float] = DEFAULT_COLOR
+    emission_rate: float = DEFAULT_EMISSION_RATE
+    max_particles: int = DEFAULT_MAX_PARTICLES
+    lifetime: float = DEFAULT_LIFETIME
+    start_speed: float = DEFAULT_START_SPEED
 
 
 @dataclass
@@ -60,17 +53,61 @@ class VrmxtVfx:
     emitters: list[VrmxtVfxEmitter] = field(default_factory=list)
 
 
-def _quaternion_is_valid(rotation: tuple[float, float, float, float]) -> bool:
-    length_squared = sum(component * component for component in rotation)
-    return length_squared > 0.0 and all(
-        math.isfinite(component) for component in rotation
-    )
-
-
-def _parse_particle_params(raw: Mapping[str, Json]) -> ParticleParams | None:
-    texture = as_int(raw.get("texture"))
-    if raw.get("texture") is not None and texture is None:
+def _parse_size(raw: object) -> tuple[float, float] | None:
+    parsed = finite_numbers(as_list(raw) or [], 2)
+    if parsed is None:
         return None
+    if not all(is_finite_positive(component) for component in parsed):
+        return None
+    return (parsed[0], parsed[1])
+
+
+def _parse_color(raw: object) -> tuple[float, float, float, float] | None:
+    parsed = finite_numbers(as_list(raw) or [], 4)
+    if parsed is None:
+        return None
+    if parsed[0] < 0.0 or parsed[1] < 0.0 or parsed[2] < 0.0:
+        return None
+    if parsed[3] < 0.0 or parsed[3] > 1.0:
+        return None
+    return (parsed[0], parsed[1], parsed[2], parsed[3])
+
+
+def _parse_emitter(
+    raw: Mapping[str, Json],
+    node_count: int | None,
+    texture_count: int | None,
+) -> VrmxtVfxEmitter | None:
+    node = as_int(raw.get("node"))
+    if node is None or node < 0:
+        return None
+    if node_count is not None and node >= node_count:
+        return None
+
+    texture = as_int(raw.get("texture"))
+    if raw.get("texture") is not None:
+        if texture is None or texture < 0:
+            return None
+        if texture_count is not None and texture >= texture_count:
+            return None
+
+    size_raw = raw.get("size")
+    if size_raw is None:
+        size = DEFAULT_SIZE
+    else:
+        parsed_size = _parse_size(size_raw)
+        if parsed_size is None:
+            return None
+        size = parsed_size
+
+    color_raw = raw.get("color")
+    if color_raw is None:
+        color = DEFAULT_COLOR
+    else:
+        parsed_color = _parse_color(color_raw)
+        if parsed_color is None:
+            return None
+        color = parsed_color
 
     emission_rate = as_number(raw.get("emissionRate"))
     if raw.get("emissionRate") is not None:
@@ -93,13 +130,6 @@ def _parse_particle_params(raw: Mapping[str, Json]) -> ParticleParams | None:
     else:
         lifetime = DEFAULT_LIFETIME
 
-    start_size = as_number(raw.get("startSize"))
-    if raw.get("startSize") is not None:
-        if start_size is None or not is_finite_non_negative(start_size):
-            return None
-    else:
-        start_size = DEFAULT_START_SIZE
-
     start_speed = as_number(raw.get("startSpeed"))
     if raw.get("startSpeed") is not None:
         if start_speed is None or not is_finite_non_negative(start_speed):
@@ -107,85 +137,18 @@ def _parse_particle_params(raw: Mapping[str, Json]) -> ParticleParams | None:
     else:
         start_speed = DEFAULT_START_SPEED
 
-    start_color_raw = raw.get("startColor")
-    if start_color_raw is None:
-        start_color = DEFAULT_START_COLOR
-    else:
-        parsed_color = finite_numbers(as_list(start_color_raw) or [], 4)
-        if parsed_color is None:
-            return None
-        start_color = (
-            parsed_color[0],
-            parsed_color[1],
-            parsed_color[2],
-            parsed_color[3],
-        )
-
-    return ParticleParams(
-        texture=texture,
-        emission_rate=emission_rate,
-        max_particles=max_particles,
-        lifetime=lifetime,
-        start_size=start_size,
-        start_speed=start_speed,
-        start_color=start_color,
-    )
-
-
-def _parse_emitter(
-    raw: Mapping[str, Json], node_count: int | None
-) -> VrmxtVfxEmitter | None:
-    emitter_type = as_str(raw.get("type"))
-    if emitter_type != EMITTER_TYPE_PARTICLE:
-        return None
-
-    node = as_int(raw.get("node"))
-    if node is None or node < 0:
-        return None
-    if node_count is not None and node >= node_count:
-        return None
-
-    local_position_raw = raw.get("localPosition")
-    if local_position_raw is None:
-        local_position = DEFAULT_LOCAL_POSITION
-    else:
-        parsed_position = finite_numbers(as_list(local_position_raw) or [], 3)
-        if parsed_position is None:
-            return None
-        local_position = (parsed_position[0], parsed_position[1], parsed_position[2])
-
-    local_rotation_raw = raw.get("localRotation")
-    if local_rotation_raw is None:
-        local_rotation = DEFAULT_LOCAL_ROTATION
-    else:
-        parsed_rotation = finite_numbers(as_list(local_rotation_raw) or [], 4)
-        if parsed_rotation is None:
-            return None
-        local_rotation = (
-            parsed_rotation[0],
-            parsed_rotation[1],
-            parsed_rotation[2],
-            parsed_rotation[3],
-        )
-        if not _quaternion_is_valid(local_rotation):
-            return None
-
-    particle_raw = as_dict(raw.get("particle"))
-    if particle_raw is None:
-        return None
-    particle = _parse_particle_params(particle_raw)
-    if particle is None:
-        return None
-
     name = as_str(raw.get("name"))
 
     return VrmxtVfxEmitter(
-        type=emitter_type,
         node=node,
         name=name,
-        local_position=local_position,
-        local_rotation=local_rotation,
-        particle=particle,
+        texture=texture,
+        size=size,
+        color=color,
+        emission_rate=emission_rate,
+        max_particles=max_particles,
+        lifetime=lifetime,
+        start_speed=start_speed,
     )
 
 
@@ -193,6 +156,7 @@ def parse_vfx(
     extension_dict: Mapping[str, Json],
     *,
     node_count: int | None = None,
+    texture_count: int | None = None,
 ) -> VrmxtVfx | None:
     spec_version = as_str(extension_dict.get("specVersion"))
     if spec_version != SPEC_VERSION_1_0:
@@ -207,40 +171,27 @@ def parse_vfx(
         emitter_dict = as_dict(item)
         if emitter_dict is None:
             continue
-        emitter = _parse_emitter(emitter_dict, node_count)
+        emitter = _parse_emitter(emitter_dict, node_count, texture_count)
         if emitter is not None:
             emitters.append(emitter)
 
     return VrmxtVfx(spec_version=spec_version, emitters=emitters)
 
 
-def _serialize_particle_params(particle: ParticleParams) -> dict[str, Json]:
-    result: dict[str, Json] = {
-        "emissionRate": particle.emission_rate,
-        "maxParticles": particle.max_particles,
-        "lifetime": particle.lifetime,
-        "startSize": particle.start_size,
-        "startSpeed": particle.start_speed,
-        "startColor": list(particle.start_color),
-    }
-    if particle.texture is not None:
-        result["texture"] = particle.texture
-    return result
-
-
 def _serialize_emitter(emitter: VrmxtVfxEmitter) -> dict[str, Json]:
     result: dict[str, Json] = {
-        "type": emitter.type,
         "node": emitter.node,
+        "size": list(emitter.size),
+        "color": list(emitter.color),
+        "emissionRate": emitter.emission_rate,
+        "maxParticles": emitter.max_particles,
+        "lifetime": emitter.lifetime,
+        "startSpeed": emitter.start_speed,
     }
     if emitter.name is not None:
         result["name"] = emitter.name
-    if emitter.local_position != DEFAULT_LOCAL_POSITION:
-        result["localPosition"] = list(emitter.local_position)
-    if emitter.local_rotation != DEFAULT_LOCAL_ROTATION:
-        result["localRotation"] = list(emitter.local_rotation)
-    if emitter.particle is not None:
-        result["particle"] = _serialize_particle_params(emitter.particle)
+    if emitter.texture is not None:
+        result["texture"] = emitter.texture
     return result
 
 
@@ -256,26 +207,33 @@ def write_vfx_to_gltf(json_dict: MutableMapping[str, Json], vfx: VrmxtVfx) -> No
     if not isinstance(extensions, dict):
         extensions = {}
         json_dict["extensions"] = extensions
-    extensions[EXTENSION_VRMXT_VFX] = serialize_vfx(vfx)
-    ensure_extensions_used(json_dict, EXTENSION_VRMXT_VFX)
+    extensions[EXTENSION_VRMXT_SPRITE_PARTICLE] = serialize_vfx(vfx)
+    ensure_extensions_used(json_dict, EXTENSION_VRMXT_SPRITE_PARTICLE)
 
 
 def read_vfx_from_gltf(
-    json_dict: Mapping[str, Json], *, node_count: int | None = None
+    json_dict: Mapping[str, Json],
+    *,
+    node_count: int | None = None,
+    texture_count: int | None = None,
 ) -> VrmxtVfx | None:
-    extension_dict = get_root_extension(json_dict, EXTENSION_VRMXT_VFX)
+    extension_dict = get_root_extension(json_dict, EXTENSION_VRMXT_SPRITE_PARTICLE)
     if extension_dict is None:
         return None
-    return parse_vfx(extension_dict, node_count=node_count)
+    if texture_count is None:
+        textures = json_dict.get("textures")
+        if isinstance(textures, list):
+            texture_count = len(textures)
+    return parse_vfx(extension_dict, node_count=node_count, texture_count=texture_count)
 
 
 __all__ = [
+    "DEFAULT_COLOR",
     "DEFAULT_EMISSION_RATE",
-    "DEFAULT_LOCAL_POSITION",
-    "DEFAULT_LOCAL_ROTATION",
+    "DEFAULT_LIFETIME",
     "DEFAULT_MAX_PARTICLES",
-    "EMITTER_TYPE_PARTICLE",
-    "ParticleParams",
+    "DEFAULT_SIZE",
+    "DEFAULT_START_SPEED",
     "VrmxtVfx",
     "VrmxtVfxEmitter",
     "parse_vfx",

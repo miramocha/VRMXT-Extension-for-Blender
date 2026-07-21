@@ -7,6 +7,7 @@ import unittest
 from types import SimpleNamespace
 from unittest import mock
 
+from io_scene_vrmxt.common.constants import EXTENSION_VRMXT_SPRITE_PARTICLE
 from io_scene_vrmxt.vfx.export_hook import resolve_node_index
 from io_scene_vrmxt.vfx.gltf_texture import find_texture_index_for_image
 from io_scene_vrmxt.vfx.import_hook import resolve_attachment, resolve_texture_image
@@ -119,16 +120,13 @@ class TestVfxImportExportAdapters(unittest.TestCase):
             attachment_type="",
             attachment_bone="",
             attachment_object=None,
-            emitter_type="",
-            local_position=None,
-            local_rotation=None,
             texture=None,
+            size=None,
+            color=None,
             emission_rate=0.0,
             max_particles=0,
             lifetime=0.0,
-            start_size=0.0,
             start_speed=0.0,
-            start_color=None,
         )
         emitters.add.return_value = item
         settings = SimpleNamespace(emitters=emitters)
@@ -139,17 +137,16 @@ class TestVfxImportExportAdapters(unittest.TestCase):
             json_dict={
                 "nodes": [{}, {}, {}],
                 "extensions": {
-                    "VRMXT_vfx": {
+                    EXTENSION_VRMXT_SPRITE_PARTICLE: {
                         "specVersion": "1.0",
                         "emitters": [
                             {
                                 "name": "HandSpark",
-                                "type": "particle",
                                 "node": 2,
-                                "particle": {
-                                    "emissionRate": 20.0,
-                                    "maxParticles": 32,
-                                },
+                                "emissionRate": 20.0,
+                                "maxParticles": 32,
+                                "size": [0.04, 0.04],
+                                "color": [1.0, 0.85, 0.4, 1.0],
                             }
                         ],
                     }
@@ -171,25 +168,24 @@ class TestVfxImportExportAdapters(unittest.TestCase):
         self.assertEqual(item.attachment_bone, "Hand_L")
         self.assertEqual(item.emission_rate, 20.0)
         self.assertEqual(item.max_particles, 32)
+        self.assertEqual(item.size, (0.04, 0.04))
+        self.assertEqual(item.color, (1.0, 0.85, 0.4, 1.0))
 
     def test_apply_vfx_export_writes_bone_emitter(self) -> None:
         from io_scene_vrmxt.vfx.export_hook import apply_vfx_export
 
         item = SimpleNamespace(
-            emitter_type="particle",
             attachment_type=ATTACHMENT_TYPE_BONE,
             attachment_bone="Hand_L",
             attachment_object=None,
             name="HandSpark",
-            local_position=(0.0, 0.0, 0.0),
-            local_rotation=(0.0, 0.0, 0.0, 1.0),
             texture=None,
             emission_rate=20.0,
             max_particles=32,
             lifetime=0.8,
-            start_size=0.04,
+            size=(0.04, 0.04),
             start_speed=0.2,
-            start_color=(1.0, 0.85, 0.4, 1.0),
+            color=(1.0, 0.85, 0.4, 1.0),
         )
         settings = SimpleNamespace(emitters=[item])
         armature = SimpleNamespace(data=SimpleNamespace(vrmxt_vfx_settings=settings))
@@ -205,11 +201,19 @@ class TestVfxImportExportAdapters(unittest.TestCase):
 
         apply_vfx_export(context)
 
-        extension = json_dict["extensions"]["VRMXT_vfx"]
+        extension = json_dict["extensions"][EXTENSION_VRMXT_SPRITE_PARTICLE]
         self.assertEqual(extension["specVersion"], "1.0")
         self.assertEqual(len(extension["emitters"]), 1)
-        self.assertEqual(extension["emitters"][0]["node"], 2)
-        self.assertEqual(extension["emitters"][0]["name"], "HandSpark")
+        emitter = extension["emitters"][0]
+        self.assertEqual(emitter["node"], 2)
+        self.assertEqual(emitter["name"], "HandSpark")
+        self.assertEqual(emitter["size"], [0.04, 0.04])
+        self.assertEqual(emitter["color"], [1.0, 0.85, 0.4, 1.0])
+        self.assertNotIn("type", emitter)
+        self.assertNotIn("particle", emitter)
+        self.assertNotIn("localPosition", emitter)
+        self.assertNotIn("localRotation", emitter)
+        self.assertNotIn("billboard", emitter)
 
 
 if __name__ == "__main__":
