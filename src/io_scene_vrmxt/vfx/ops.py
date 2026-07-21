@@ -113,11 +113,28 @@ def _default_attachment_bone(context: object) -> str:
     return ""
 
 
+def _bone_parent_of_object(obj: object) -> str:
+    """Return armature bone name when *obj* is bone-parented; else empty."""
+    if obj is None:
+        return ""
+    parent = getattr(obj, "parent", None)
+    if parent is None or getattr(parent, "type", None) != "ARMATURE":
+        return ""
+    if getattr(obj, "parent_type", None) != "BONE":
+        return ""
+    return getattr(obj, "parent_bone", "") or ""
+
+
 def _resolve_offset_parent_bone(context: object, emitter: object) -> str:
     """Bone used when creating an offset Empty for *emitter*."""
     attachment_type = getattr(emitter, "attachment_type", ATTACHMENT_TYPE_BONE)
     if attachment_type == ATTACHMENT_TYPE_BONE:
         bone = getattr(emitter, "attachment_bone", "") or ""
+        if bone:
+            return bone
+    elif attachment_type == ATTACHMENT_TYPE_OBJECT:
+        attached = getattr(emitter, "attachment_object", None)
+        bone = _bone_parent_of_object(attached)
         if bone:
             return bone
     return _default_attachment_bone(context)

@@ -11,6 +11,7 @@ from io_scene_vrmxt.common.constants import EXTENSION_VRMXT_SPRITE_PARTICLE
 from io_scene_vrmxt.vfx.export_hook import resolve_node_index
 from io_scene_vrmxt.vfx.gltf_texture import find_texture_index_for_image
 from io_scene_vrmxt.vfx.import_hook import resolve_attachment, resolve_texture_image
+from io_scene_vrmxt.vfx.ops import _bone_parent_of_object, _resolve_offset_parent_bone
 from io_scene_vrmxt.vfx.property_group import (
     ATTACHMENT_TYPE_BONE,
     ATTACHMENT_TYPE_OBJECT,
@@ -32,6 +33,21 @@ class TestVfxAttachmentResolution(unittest.TestCase):
 
     def test_resolve_attachment_unresolved(self) -> None:
         self.assertIsNone(resolve_attachment(9, {}, {}))
+
+    def test_offset_parent_bone_follows_object_bone_parent(self) -> None:
+        armature = SimpleNamespace(type="ARMATURE")
+        empty = SimpleNamespace(
+            parent=armature,
+            parent_type="BONE",
+            parent_bone="Hand_L",
+        )
+        self.assertEqual(_bone_parent_of_object(empty), "Hand_L")
+        emitter = SimpleNamespace(
+            attachment_type=ATTACHMENT_TYPE_OBJECT,
+            attachment_bone="",
+            attachment_object=empty,
+        )
+        self.assertEqual(_resolve_offset_parent_bone(None, emitter), "Hand_L")
 
     def test_resolve_node_index_bone_and_object(self) -> None:
         self.assertEqual(
