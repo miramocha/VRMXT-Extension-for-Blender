@@ -12,6 +12,7 @@ import logging
 from collections.abc import Mapping
 from typing import Any
 
+from ..common.validation import is_finite_non_negative, is_positive_int
 from ..format.vfx import VrmxtVfx, VrmxtVfxEmitter, write_vfx_to_gltf
 from .geonodes_preview import is_preview_object
 from .gltf_texture import ensure_vfx_texture_index
@@ -115,6 +116,46 @@ def apply_vfx_export(context: Any) -> None:
             )
             continue
 
+        emission_rate = item.emission_rate
+        if not is_finite_non_negative(emission_rate):
+            skipped += 1
+            logger.warning(
+                "Skipping VFX emitter %r: invalid emission_rate %r",
+                item.name,
+                emission_rate,
+            )
+            continue
+
+        max_particles = item.max_particles
+        if not is_positive_int(max_particles):
+            skipped += 1
+            logger.warning(
+                "Skipping VFX emitter %r: invalid max_particles %r",
+                item.name,
+                max_particles,
+            )
+            continue
+
+        lifetime = item.lifetime
+        if not is_finite_non_negative(lifetime):
+            skipped += 1
+            logger.warning(
+                "Skipping VFX emitter %r: invalid lifetime %r",
+                item.name,
+                lifetime,
+            )
+            continue
+
+        start_speed = item.start_speed
+        if not is_finite_non_negative(start_speed):
+            skipped += 1
+            logger.warning(
+                "Skipping VFX emitter %r: invalid start_speed %r",
+                item.name,
+                start_speed,
+            )
+            continue
+
         texture_image = getattr(item, "texture", None)
         texture_index = None
         if texture_image is not None:
@@ -150,10 +191,10 @@ def apply_vfx_export(context: Any) -> None:
                     float(color[2]),
                     float(color[3]),
                 ),
-                emission_rate=item.emission_rate,
-                max_particles=item.max_particles,
-                lifetime=item.lifetime,
-                start_speed=item.start_speed,
+                emission_rate=float(emission_rate),
+                max_particles=int(max_particles),
+                lifetime=float(lifetime),
+                start_speed=float(start_speed),
             )
         )
 

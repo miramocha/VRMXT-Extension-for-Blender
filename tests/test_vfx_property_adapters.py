@@ -231,6 +231,93 @@ class TestVfxImportExportAdapters(unittest.TestCase):
         self.assertNotIn("localRotation", emitter)
         self.assertNotIn("billboard", emitter)
 
+    def test_apply_vfx_export_skips_invalid_scalars(self) -> None:
+        from io_scene_vrmxt.vfx.export_hook import apply_vfx_export
+
+        bad = SimpleNamespace(
+            attachment_type=ATTACHMENT_TYPE_BONE,
+            attachment_bone="Hand_L",
+            attachment_object=None,
+            name="BadRate",
+            texture=None,
+            emission_rate=-1.0,
+            max_particles=32,
+            lifetime=0.8,
+            size=(0.04, 0.04),
+            start_speed=0.2,
+            color=(1.0, 1.0, 1.0, 1.0),
+        )
+        good = SimpleNamespace(
+            attachment_type=ATTACHMENT_TYPE_BONE,
+            attachment_bone="Hand_L",
+            attachment_object=None,
+            name="Ok",
+            texture=None,
+            emission_rate=5.0,
+            max_particles=8,
+            lifetime=1.0,
+            size=(0.05, 0.05),
+            start_speed=0.1,
+            color=(1.0, 1.0, 1.0, 1.0),
+        )
+        settings = SimpleNamespace(emitters=[bad, good])
+        armature = SimpleNamespace(data=SimpleNamespace(vrmxt_vfx_settings=settings))
+        json_dict: dict = {"extensions": {}}
+        context = SimpleNamespace(
+            armature=armature,
+            json_dict=json_dict,
+            buffer0=bytearray(),
+            bone_name_to_node_index={"Hand_L": 0},
+            object_name_to_node_index={},
+            image_name_to_index={},
+        )
+
+        with self.assertLogs("io_scene_vrmxt.vfx.export_hook", level="WARNING") as logs:
+            apply_vfx_export(context)
+
+        extension = json_dict["extensions"][EXTENSION_VRMXT_SPRITE_PARTICLE]
+        self.assertEqual(len(extension["emitters"]), 1)
+        self.assertEqual(extension["emitters"][0]["name"], "Ok")
+        self.assertTrue(any("emission_rate" in message for message in logs.output))
+
+    def test_apply_vfx_import_logs_unresolved_nodes(self) -> None:
+        from io_scene_vrmxt.vfx.import_hook import apply_vfx_import
+
+        emitters = mock.Mock()
+        settings = SimpleNamespace(emitters=emitters)
+        armature = SimpleNamespace(data=SimpleNamespace(vrmxt_vfx_settings=settings))
+        context = SimpleNamespace(
+            json_dict={
+                "nodes": [{}],
+                "extensions": {
+                    EXTENSION_VRMXT_SPRITE_PARTICLE: {
+                        "specVersion": "1.0",
+                        "emitters": [
+                            {"name": "Missing", "node": 0},
+                            {
+                                "name": "HandSpark",
+                                "node": 0,
+                                "emissionRate": 5.0,
+                            },
+                        ],
+                    }
+                },
+            },
+            armature=armature,
+            node_index_to_bone_name={},
+            node_index_to_object_name={},
+            image_index_to_image={},
+            context=SimpleNamespace(blend_data=SimpleNamespace(objects={})),
+        )
+
+        with self.assertLogs("io_scene_vrmxt.vfx.import_hook", level="WARNING") as logs:
+            apply_vfx_import(context)
+
+        emitters.clear.assert_called_once()
+        emitters.add.assert_not_called()
+        self.assertTrue(any("unresolved node" in message for message in logs.output))
+        self.assertTrue(any("skipped 2 emitter" in message for message in logs.output))
+
 
 if __name__ == "__main__":
     unittest.main()

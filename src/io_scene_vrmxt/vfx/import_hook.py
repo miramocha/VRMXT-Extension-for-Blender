@@ -77,6 +77,8 @@ def apply_vfx_import(context: Any) -> None:
     blend_data = getattr(getattr(context, "context", None), "blend_data", None)
     image_index_to_image = getattr(context, "image_index_to_image", {}) or {}
 
+    skipped = 0
+    applied = 0
     for emitter in vfx.emitters:
         attachment = resolve_attachment(
             emitter.node,
@@ -84,6 +86,12 @@ def apply_vfx_import(context: Any) -> None:
             context.node_index_to_object_name,
         )
         if attachment is None:
+            skipped += 1
+            logger.warning(
+                "Skipping VFX emitter %r: unresolved node %s",
+                emitter.name,
+                emitter.node,
+            )
             continue
 
         attachment_type, attachment_name = attachment
@@ -112,6 +120,14 @@ def apply_vfx_import(context: Any) -> None:
         item.max_particles = emitter.max_particles
         item.lifetime = emitter.lifetime
         item.start_speed = emitter.start_speed
+        applied += 1
+
+    if skipped:
+        logger.warning(
+            "VRMXT VFX import skipped %d emitter(s); %d applied",
+            skipped,
+            applied,
+        )
 
     _rebuild_preview_after_import(armature, context)
 
