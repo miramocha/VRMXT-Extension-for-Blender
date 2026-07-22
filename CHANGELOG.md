@@ -12,6 +12,8 @@
   Import/export now keeps lilToon values like `_GlitterParams1` `[256, 256, …]`.
 - Materials override UI: `*Color` / `_Color` rows use an HDR color swatch
   (`soft_max=10`, no hard max); other vectors stay expanded float4.
+- Materials override: migrate 0.2.0 `*Color` values from `value_vector` into
+  `value_color` on draw/export so old blends do not re-export as white.
 - Materials override textures: bind Blender `Image` on import; on export pack via
   `ensure_vfx_texture_index` and never keep stale `textures[]` indices (fixes
   missing override-only images like `VrmxtTestTexture` after Blender re-export).

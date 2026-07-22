@@ -8,7 +8,7 @@ from typing import ClassVar
 
 from .catalog import CUSTOM_SHADER_ENUM, find_catalog_by_key
 from .property_group import engine_ui_label, variant_ui_label
-from .sync import CUSTOM_PROP_KEY
+from .sync import CUSTOM_PROP_KEY, migrate_legacy_color_storage
 from .vector_ui import is_color_vector_property_name
 
 try:
@@ -43,6 +43,7 @@ def _draw_property_row(layout: UILayout, item: object, property_index: int) -> N
     elif prop_type == "vector":
         if is_color_vector_property_name(str(getattr(item, "name", ""))):
             # HDR swatch (value_color: COLOR, soft_max=10, no hard max=1).
+            migrate_legacy_color_storage(item)
             row.prop(item, "value_color", text="")
         else:
             # Param packs — expanded unclamped float4.

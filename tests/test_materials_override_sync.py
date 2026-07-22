@@ -58,6 +58,36 @@ class TestMaterialsOverrideSyncVectors(unittest.TestCase):
         self.assertGreater(parsed.value[0], 1.0)
         self.assertAlmostEqual(parsed.value[0], 1.13530147)
 
+    def test_legacy_color_migrates_from_value_vector(self) -> None:
+        """0.2.0 blends stored *Color in value_vector; value_color stays default."""
+        item = SimpleNamespace(
+            name="_Color",
+            prop_type="vector",
+            vector_size=4,
+            value_vector=(0.8, 0.2, 0.1, 1.0),
+            value_color=(1.0, 1.0, 1.0, 1.0),
+        )
+        parsed = _property_item_to_format(item)
+        self.assertIsNotNone(parsed)
+        assert parsed is not None
+        self.assertEqual(parsed.value, [0.8, 0.2, 0.1, 1.0])
+        # Migrated into value_color; legacy slot cleared.
+        self.assertEqual(tuple(item.value_color), (0.8, 0.2, 0.1, 1.0))
+        self.assertEqual(tuple(item.value_vector), (1.0, 1.0, 1.0, 1.0))
+
+    def test_authored_value_color_wins_over_stale_vector(self) -> None:
+        item = SimpleNamespace(
+            name="_Color",
+            prop_type="vector",
+            vector_size=4,
+            value_vector=(0.8, 0.2, 0.1, 1.0),
+            value_color=(0.1, 0.2, 0.9, 1.0),
+        )
+        parsed = _property_item_to_format(item)
+        self.assertIsNotNone(parsed)
+        assert parsed is not None
+        self.assertEqual(parsed.value, [0.1, 0.2, 0.9, 1.0])
+
 
 if __name__ == "__main__":
     unittest.main()
