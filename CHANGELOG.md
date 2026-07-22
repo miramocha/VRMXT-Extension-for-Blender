@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## 0.2.2
+
+- Version bump for Blender extension refresh.
+
+## 0.2.1
+
+- Materials override: stop clamping vector props to 0–1 (was `COLOR` + `max=1`).
+  Import/export now keeps lilToon values like `_GlitterParams1` `[256, 256, …]`.
+- Materials override UI: `*Color` / `_Color` rows use an HDR color swatch
+  (`soft_max=10`, no hard max); other vectors stay expanded float4.
+- Materials override textures: bind Blender `Image` on import; on export pack via
+  `ensure_vfx_texture_index` and never keep stale `textures[]` indices (fixes
+  missing override-only images like `VrmxtTestTexture` after Blender re-export).
+
 ## 0.2.0
 
 - Materials override authoring UI (Add Override, Engine / Variant / catalog shader,

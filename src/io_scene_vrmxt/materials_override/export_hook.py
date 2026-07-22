@@ -70,24 +70,37 @@ def _remap_texture_properties_for_export(
             if prop_index < len(slot_props):
                 image = getattr(slot_props[prop_index], "image", None)
             prop_index += 1
-            if image is not None:
-                texture_index = ensure_vfx_texture_index(
-                    image=image,
-                    json_dict=json_dict,
-                    buffer0=buffer0,
-                    image_name_to_index=image_name_to_index,
+            if image is None:
+                # Never keep import-era textures[] indices: Blender rebuilds
+                # textures[] on export and drops override-only images.
+                logger.warning(
+                    "VRMXT materials override: dropping texture prop %r on %r "
+                    "(no Blender Image; re-import VRM or assign an Image)",
+                    prop_dict.get("name"),
+                    getattr(material, "name", "?"),
                 )
-                if texture_index is None:
-                    # Soft-fail: drop unresolvable authored texture (rule 24).
-                    continue
-                prop_dict = dict(prop_dict)
-                prop_dict["texture"] = texture_index
-                prop_dict.pop("value", None)
-                new_props.append(prop_dict)
-            else:
-                # Keep imported texture index when present.
-                if "texture" in prop_dict:
-                    new_props.append(prop_dict)
+                continue
+
+            texture_index = ensure_vfx_texture_index(
+                image=image,
+                json_dict=json_dict,
+                buffer0=buffer0,
+                image_name_to_index=image_name_to_index,
+            )
+            if texture_index is None:
+                # Soft-fail: drop unresolvable authored texture (rule 24).
+                logger.warning(
+                    "VRMXT materials override: could not pack texture prop %r "
+                    "on %r (image %r)",
+                    prop_dict.get("name"),
+                    getattr(material, "name", "?"),
+                    getattr(image, "name", image),
+                )
+                continue
+            prop_dict = dict(prop_dict)
+            prop_dict["texture"] = texture_index
+            prop_dict.pop("value", None)
+            new_props.append(prop_dict)
         entry_dict = dict(entry_dict)
         if new_props:
             entry_dict["properties"] = new_props

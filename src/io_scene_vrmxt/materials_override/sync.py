@@ -23,6 +23,7 @@ from ..format.materials_override import (
     serialize_materials_override,
 )
 from .catalog import CUSTOM_SHADER_ENUM, CatalogProperty, find_catalog_by_shader_name
+from .vector_ui import is_color_vector_property_name
 
 CUSTOM_PROP_KEY = "vrmxt_materials_override"
 
@@ -45,8 +46,12 @@ def apply_catalog_default(item: Any, catalog_prop: CatalogProperty) -> None:
             values = [float(v) for v in default[:4]]
             while len(values) < 4:
                 values.append(1.0 if len(values) == 3 else 0.0)
-            item.value_vector = tuple(values[:4])
+            vec = tuple(values[:4])
             item.vector_size = min(max(len(default), 2), 4)
+            if is_color_vector_property_name(catalog_prop.name):
+                item.value_color = vec
+            else:
+                item.value_vector = vec
     elif catalog_prop.type == "shaderFeature":
         item.value_bool = bool(default) if isinstance(default, bool) else bool(default)
 
@@ -104,8 +109,12 @@ def populate_groups_from_extension(
                 values = [float(v) for v in prop.value[:4]]
                 while len(values) < 4:
                     values.append(0.0)
-                item.value_vector = tuple(values[:4])
+                vec = tuple(values[:4])
                 item.vector_size = min(max(len(prop.value), 2), 4)
+                if is_color_vector_property_name(prop.name):
+                    item.value_color = vec
+                else:
+                    item.value_vector = vec
             elif prop.type == "shaderFeature" and isinstance(prop.value, bool):
                 item.value_bool = prop.value
             elif prop.type == "texture":
@@ -167,7 +176,10 @@ def _property_item_to_format(item: Any) -> MaterialProperty | None:
     if prop_type == "vector":
         size = int(getattr(item, "vector_size", 4))
         size = min(max(size, 2), 4)
-        vec = getattr(item, "value_vector", (0.0, 0.0, 0.0, 0.0))
+        if is_color_vector_property_name(name):
+            vec = getattr(item, "value_color", (0.0, 0.0, 0.0, 0.0))
+        else:
+            vec = getattr(item, "value_vector", (0.0, 0.0, 0.0, 0.0))
         return MaterialProperty(
             name=name,
             type=prop_type,
