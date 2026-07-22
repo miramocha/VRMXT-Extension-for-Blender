@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Apply parsed VRMXT_vfx data to Blender armature property groups."""
+"""Apply parsed VRMXT_sprite_particle data to Blender armature property groups."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import logging
 from collections.abc import Mapping
 from typing import Any
 
-from ..common.constants import EXTENSION_VRMXT_VFX
+from ..common.constants import EXTENSION_VRMXT_SPRITE_PARTICLE
 from ..common.json_util import get_root_extension
 from ..format.vfx import parse_vfx
 from .property_group import (
@@ -16,8 +16,6 @@ from .property_group import (
 )
 
 logger = logging.getLogger(__name__)
-
-CUSTOM_PROP_KEY = "vrmxt_vfx_json"
 
 
 def resolve_attachment(
@@ -40,7 +38,7 @@ def resolve_texture_image(
     json_dict: Mapping[str, Any],
     image_index_to_image: Mapping[int, Any],
 ) -> Any | None:
-    """Map ``particle.texture`` (textures[] index) to a Blender Image."""
+    """Map emitter ``texture`` (textures[] index) to a Blender Image."""
     if texture_index is None or texture_index < 0:
         return None
     textures = json_dict.get("textures")
@@ -57,13 +55,15 @@ def resolve_texture_image(
 
 def apply_vfx_import(context: Any) -> None:
     json_dict = context.json_dict
-    extension_dict = get_root_extension(json_dict, EXTENSION_VRMXT_VFX)
+    extension_dict = get_root_extension(json_dict, EXTENSION_VRMXT_SPRITE_PARTICLE)
     if extension_dict is None:
         return
 
     nodes = json_dict.get("nodes")
     node_count = len(nodes) if isinstance(nodes, list) else None
-    vfx = parse_vfx(extension_dict, node_count=node_count)
+    textures = json_dict.get("textures")
+    texture_count = len(textures) if isinstance(textures, list) else None
+    vfx = parse_vfx(extension_dict, node_count=node_count, texture_count=texture_count)
     if vfx is None:
         return
 
@@ -77,6 +77,8 @@ def apply_vfx_import(context: Any) -> None:
     blend_data = getattr(getattr(context, "context", None), "blend_data", None)
     image_index_to_image = getattr(context, "image_index_to_image", {}) or {}
 
+    skipped = 0
+    applied = 0
     for emitter in vfx.emitters:
         attachment = resolve_attachment(
             emitter.node,
@@ -84,15 +86,18 @@ def apply_vfx_import(context: Any) -> None:
             context.node_index_to_object_name,
         )
         if attachment is None:
+            skipped += 1
+            logger.warning(
+                "Skipping VFX emitter %r: unresolved node %s",
+                emitter.name,
+                emitter.node,
+            )
             continue
 
         attachment_type, attachment_name = attachment
         item = settings.emitters.add()
         item.name = emitter.name or ""
         item.attachment_type = attachment_type
-        item.emitter_type = emitter.type
-        item.local_position = emitter.local_position
-        item.local_rotation = emitter.local_rotation
 
         if attachment_type == ATTACHMENT_TYPE_BONE:
             item.attachment_bone = attachment_name
@@ -104,18 +109,25 @@ def apply_vfx_import(context: Any) -> None:
             else:
                 item.attachment_object = None
 
-        if emitter.particle is not None:
-            item.texture = resolve_texture_image(
-                emitter.particle.texture,
-                json_dict,
-                image_index_to_image,
-            )
-            item.emission_rate = emitter.particle.emission_rate
-            item.max_particles = emitter.particle.max_particles
-            item.lifetime = emitter.particle.lifetime
-            item.start_size = emitter.particle.start_size
-            item.start_speed = emitter.particle.start_speed
-            item.start_color = emitter.particle.start_color
+        item.texture = resolve_texture_image(
+            emitter.texture,
+            json_dict,
+            image_index_to_image,
+        )
+        item.size = emitter.size
+        item.color = emitter.color
+        item.emission_rate = emitter.emission_rate
+        item.max_particles = emitter.max_particles
+        item.lifetime = emitter.lifetime
+        item.start_speed = emitter.start_speed
+        applied += 1
+
+    if skipped:
+        logger.warning(
+            "VRMXT VFX import skipped %d emitter(s); %d applied",
+            skipped,
+            applied,
+        )
 
     _rebuild_preview_after_import(armature, context)
 
@@ -142,7 +154,6 @@ def on_vrm1_import(context: Any) -> None:
 
 
 __all__ = [
-    "CUSTOM_PROP_KEY",
     "apply_vfx_import",
     "on_vrm1_import",
     "resolve_attachment",

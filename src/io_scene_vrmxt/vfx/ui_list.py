@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""UIList for armature VRMXT_vfx emitters."""
+"""UIList for armature VRMXT_sprite_particle emitters."""
 
 from __future__ import annotations
 

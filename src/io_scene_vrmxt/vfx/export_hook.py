@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Serialize armature VFX property groups into root VRMXT_vfx.
+"""Serialize armature VFX property groups into root VRMXT_sprite_particle.
 
 Export reads property groups only. Geometry Nodes preview helpers tagged with
 ``vrmxt_vfx_preview`` are never a source of truth. Host ``export_objects`` also
@@ -12,13 +12,8 @@ import logging
 from collections.abc import Mapping
 from typing import Any
 
-from ..format.vfx import (
-    EMITTER_TYPE_PARTICLE,
-    ParticleParams,
-    VrmxtVfx,
-    VrmxtVfxEmitter,
-    write_vfx_to_gltf,
-)
+from ..common.validation import is_finite_non_negative, is_positive_int
+from ..format.vfx import VrmxtVfx, VrmxtVfxEmitter, write_vfx_to_gltf
 from .geonodes_preview import is_preview_object
 from .gltf_texture import ensure_vfx_texture_index
 from .property_group import (
@@ -69,15 +64,6 @@ def apply_vfx_export(context: Any) -> None:
     skipped = 0
 
     for item in armature.data.vrmxt_vfx_settings.emitters:
-        if item.emitter_type != EMITTER_TYPE_PARTICLE:
-            skipped += 1
-            logger.warning(
-                "Skipping VFX emitter %r: unsupported type %r",
-                item.name,
-                item.emitter_type,
-            )
-            continue
-
         attachment_object = getattr(item, "attachment_object", None)
         attachment_object_name = (
             attachment_object.name if attachment_object is not None else None
@@ -99,6 +85,74 @@ def apply_vfx_export(context: Any) -> None:
                 item.attachment_type,
                 item.attachment_bone,
                 attachment_object_name,
+            )
+            continue
+
+        size = tuple(item.size)
+        if len(size) != 2 or size[0] <= 0.0 or size[1] <= 0.0:
+            skipped += 1
+            logger.warning(
+                "Skipping VFX emitter %r: invalid size %r",
+                item.name,
+                size,
+            )
+            continue
+
+        color = tuple(item.color)
+        if len(color) != 4 or color[0] < 0.0 or color[1] < 0.0 or color[2] < 0.0:
+            skipped += 1
+            logger.warning(
+                "Skipping VFX emitter %r: invalid color %r",
+                item.name,
+                color,
+            )
+            continue
+        if color[3] < 0.0 or color[3] > 1.0:
+            skipped += 1
+            logger.warning(
+                "Skipping VFX emitter %r: invalid color alpha %r",
+                item.name,
+                color[3],
+            )
+            continue
+
+        emission_rate = item.emission_rate
+        if not is_finite_non_negative(emission_rate):
+            skipped += 1
+            logger.warning(
+                "Skipping VFX emitter %r: invalid emission_rate %r",
+                item.name,
+                emission_rate,
+            )
+            continue
+
+        max_particles = item.max_particles
+        if not is_positive_int(max_particles):
+            skipped += 1
+            logger.warning(
+                "Skipping VFX emitter %r: invalid max_particles %r",
+                item.name,
+                max_particles,
+            )
+            continue
+
+        lifetime = item.lifetime
+        if not is_finite_non_negative(lifetime):
+            skipped += 1
+            logger.warning(
+                "Skipping VFX emitter %r: invalid lifetime %r",
+                item.name,
+                lifetime,
+            )
+            continue
+
+        start_speed = item.start_speed
+        if not is_finite_non_negative(start_speed):
+            skipped += 1
+            logger.warning(
+                "Skipping VFX emitter %r: invalid start_speed %r",
+                item.name,
+                start_speed,
             )
             continue
 
@@ -127,20 +181,20 @@ def apply_vfx_export(context: Any) -> None:
 
         emitters.append(
             VrmxtVfxEmitter(
-                type=item.emitter_type,
                 node=node_index,
                 name=item.name or None,
-                local_position=tuple(item.local_position),
-                local_rotation=tuple(item.local_rotation),
-                particle=ParticleParams(
-                    texture=texture_index,
-                    emission_rate=item.emission_rate,
-                    max_particles=item.max_particles,
-                    lifetime=item.lifetime,
-                    start_size=item.start_size,
-                    start_speed=item.start_speed,
-                    start_color=tuple(item.start_color),
+                texture=texture_index,
+                size=(float(size[0]), float(size[1])),
+                color=(
+                    float(color[0]),
+                    float(color[1]),
+                    float(color[2]),
+                    float(color[3]),
                 ),
+                emission_rate=float(emission_rate),
+                max_particles=int(max_particles),
+                lifetime=float(lifetime),
+                start_speed=float(start_speed),
             )
         )
 

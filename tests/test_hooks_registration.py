@@ -70,7 +70,12 @@ class TestHooksRegistration(unittest.TestCase):
     def test_import_hook_swallows_exceptions(self) -> None:
         context = mock.Mock()
         context.json_dict = {
-            "extensions": {"VRMXT_vfx": {"specVersion": "1.0", "emitters": []}}
+            "extensions": {
+                "VRMXT_sprite_particle": {
+                    "specVersion": "1.0",
+                    "emitters": [],
+                }
+            }
         }
         context.armature = mock.Mock()
         context.armature.data = mock.Mock(spec=[])

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Unit tests for VRMXT_vfx Geometry Nodes preview helpers."""
+"""Unit tests for VRMXT_sprite_particle Geometry Nodes preview helpers."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import unittest
 from types import SimpleNamespace
 from unittest import mock
 
+from io_scene_vrmxt.common.constants import EXTENSION_VRMXT_SPRITE_PARTICLE
 from io_scene_vrmxt.vfx.export_hook import resolve_node_index
 from io_scene_vrmxt.vfx.geonodes_preview import (
     ARMATURE_PREVIEW_ID_PROP,
@@ -27,7 +28,7 @@ class TestVfxPreviewNaming(unittest.TestCase):
     def test_preview_object_name_sanitizes(self) -> None:
         self.assertEqual(
             preview_object_name("Hand Spark!", 0),
-            "VRMXT_vfx_Hand_Spark.000",
+            "VRMXT_sprite_Hand_Spark.000",
         )
         self.assertEqual(
             preview_object_name("", 2),
@@ -122,9 +123,9 @@ class TestVfxPreviewExportIsolation(unittest.TestCase):
             resolve_node_index(
                 ATTACHMENT_TYPE_OBJECT,
                 "",
-                "VRMXT_vfx_Prop",
+                "VRMXT_sprite_Prop",
                 {},
-                {"VRMXT_vfx_Prop": 9},
+                {"VRMXT_sprite_Prop": 9},
             ),
             9,
         )
@@ -157,16 +158,13 @@ class TestVfxPreviewLifecycleWithoutBpy(unittest.TestCase):
             attachment_type="",
             attachment_bone="",
             attachment_object=None,
-            emitter_type="",
-            local_position=None,
-            local_rotation=None,
             texture=None,
+            size=None,
+            color=None,
             emission_rate=0.0,
             max_particles=0,
             lifetime=0.0,
-            start_size=0.0,
             start_speed=0.0,
-            start_color=None,
         )
         emitters.add.return_value = item
         settings = SimpleNamespace(emitters=emitters)
@@ -179,14 +177,13 @@ class TestVfxPreviewLifecycleWithoutBpy(unittest.TestCase):
             json_dict={
                 "nodes": [{}, {}, {}],
                 "extensions": {
-                    "VRMXT_vfx": {
+                    EXTENSION_VRMXT_SPRITE_PARTICLE: {
                         "specVersion": "1.0",
                         "emitters": [
                             {
                                 "name": "HandSpark",
-                                "type": "particle",
                                 "node": 2,
-                                "particle": {"emissionRate": 20.0},
+                                "emissionRate": 20.0,
                             }
                         ],
                     }

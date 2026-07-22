@@ -7,9 +7,11 @@ import unittest
 from types import SimpleNamespace
 from unittest import mock
 
+from io_scene_vrmxt.common.constants import EXTENSION_VRMXT_SPRITE_PARTICLE
 from io_scene_vrmxt.vfx.export_hook import resolve_node_index
 from io_scene_vrmxt.vfx.gltf_texture import find_texture_index_for_image
 from io_scene_vrmxt.vfx.import_hook import resolve_attachment, resolve_texture_image
+from io_scene_vrmxt.vfx.ops import _bone_parent_of_object, _resolve_offset_parent_bone
 from io_scene_vrmxt.vfx.property_group import (
     ATTACHMENT_TYPE_BONE,
     ATTACHMENT_TYPE_OBJECT,
@@ -31,6 +33,21 @@ class TestVfxAttachmentResolution(unittest.TestCase):
 
     def test_resolve_attachment_unresolved(self) -> None:
         self.assertIsNone(resolve_attachment(9, {}, {}))
+
+    def test_offset_parent_bone_follows_object_bone_parent(self) -> None:
+        armature = SimpleNamespace(type="ARMATURE")
+        empty = SimpleNamespace(
+            parent=armature,
+            parent_type="BONE",
+            parent_bone="Hand_L",
+        )
+        self.assertEqual(_bone_parent_of_object(empty), "Hand_L")
+        emitter = SimpleNamespace(
+            attachment_type=ATTACHMENT_TYPE_OBJECT,
+            attachment_bone="",
+            attachment_object=empty,
+        )
+        self.assertEqual(_resolve_offset_parent_bone(None, emitter), "Hand_L")
 
     def test_resolve_node_index_bone_and_object(self) -> None:
         self.assertEqual(
@@ -119,16 +136,13 @@ class TestVfxImportExportAdapters(unittest.TestCase):
             attachment_type="",
             attachment_bone="",
             attachment_object=None,
-            emitter_type="",
-            local_position=None,
-            local_rotation=None,
             texture=None,
+            size=None,
+            color=None,
             emission_rate=0.0,
             max_particles=0,
             lifetime=0.0,
-            start_size=0.0,
             start_speed=0.0,
-            start_color=None,
         )
         emitters.add.return_value = item
         settings = SimpleNamespace(emitters=emitters)
@@ -139,17 +153,16 @@ class TestVfxImportExportAdapters(unittest.TestCase):
             json_dict={
                 "nodes": [{}, {}, {}],
                 "extensions": {
-                    "VRMXT_vfx": {
+                    EXTENSION_VRMXT_SPRITE_PARTICLE: {
                         "specVersion": "1.0",
                         "emitters": [
                             {
                                 "name": "HandSpark",
-                                "type": "particle",
                                 "node": 2,
-                                "particle": {
-                                    "emissionRate": 20.0,
-                                    "maxParticles": 32,
-                                },
+                                "emissionRate": 20.0,
+                                "maxParticles": 32,
+                                "size": [0.04, 0.04],
+                                "color": [1.0, 0.85, 0.4, 1.0],
                             }
                         ],
                     }
@@ -171,25 +184,24 @@ class TestVfxImportExportAdapters(unittest.TestCase):
         self.assertEqual(item.attachment_bone, "Hand_L")
         self.assertEqual(item.emission_rate, 20.0)
         self.assertEqual(item.max_particles, 32)
+        self.assertEqual(item.size, (0.04, 0.04))
+        self.assertEqual(item.color, (1.0, 0.85, 0.4, 1.0))
 
     def test_apply_vfx_export_writes_bone_emitter(self) -> None:
         from io_scene_vrmxt.vfx.export_hook import apply_vfx_export
 
         item = SimpleNamespace(
-            emitter_type="particle",
             attachment_type=ATTACHMENT_TYPE_BONE,
             attachment_bone="Hand_L",
             attachment_object=None,
             name="HandSpark",
-            local_position=(0.0, 0.0, 0.0),
-            local_rotation=(0.0, 0.0, 0.0, 1.0),
             texture=None,
             emission_rate=20.0,
             max_particles=32,
             lifetime=0.8,
-            start_size=0.04,
+            size=(0.04, 0.04),
             start_speed=0.2,
-            start_color=(1.0, 0.85, 0.4, 1.0),
+            color=(1.0, 0.85, 0.4, 1.0),
         )
         settings = SimpleNamespace(emitters=[item])
         armature = SimpleNamespace(data=SimpleNamespace(vrmxt_vfx_settings=settings))
@@ -205,11 +217,106 @@ class TestVfxImportExportAdapters(unittest.TestCase):
 
         apply_vfx_export(context)
 
-        extension = json_dict["extensions"]["VRMXT_vfx"]
+        extension = json_dict["extensions"][EXTENSION_VRMXT_SPRITE_PARTICLE]
         self.assertEqual(extension["specVersion"], "1.0")
         self.assertEqual(len(extension["emitters"]), 1)
-        self.assertEqual(extension["emitters"][0]["node"], 2)
-        self.assertEqual(extension["emitters"][0]["name"], "HandSpark")
+        emitter = extension["emitters"][0]
+        self.assertEqual(emitter["node"], 2)
+        self.assertEqual(emitter["name"], "HandSpark")
+        self.assertEqual(emitter["size"], [0.04, 0.04])
+        self.assertEqual(emitter["color"], [1.0, 0.85, 0.4, 1.0])
+        self.assertNotIn("type", emitter)
+        self.assertNotIn("particle", emitter)
+        self.assertNotIn("localPosition", emitter)
+        self.assertNotIn("localRotation", emitter)
+        self.assertNotIn("billboard", emitter)
+
+    def test_apply_vfx_export_skips_invalid_scalars(self) -> None:
+        from io_scene_vrmxt.vfx.export_hook import apply_vfx_export
+
+        bad = SimpleNamespace(
+            attachment_type=ATTACHMENT_TYPE_BONE,
+            attachment_bone="Hand_L",
+            attachment_object=None,
+            name="BadRate",
+            texture=None,
+            emission_rate=-1.0,
+            max_particles=32,
+            lifetime=0.8,
+            size=(0.04, 0.04),
+            start_speed=0.2,
+            color=(1.0, 1.0, 1.0, 1.0),
+        )
+        good = SimpleNamespace(
+            attachment_type=ATTACHMENT_TYPE_BONE,
+            attachment_bone="Hand_L",
+            attachment_object=None,
+            name="Ok",
+            texture=None,
+            emission_rate=5.0,
+            max_particles=8,
+            lifetime=1.0,
+            size=(0.05, 0.05),
+            start_speed=0.1,
+            color=(1.0, 1.0, 1.0, 1.0),
+        )
+        settings = SimpleNamespace(emitters=[bad, good])
+        armature = SimpleNamespace(data=SimpleNamespace(vrmxt_vfx_settings=settings))
+        json_dict: dict = {"extensions": {}}
+        context = SimpleNamespace(
+            armature=armature,
+            json_dict=json_dict,
+            buffer0=bytearray(),
+            bone_name_to_node_index={"Hand_L": 0},
+            object_name_to_node_index={},
+            image_name_to_index={},
+        )
+
+        with self.assertLogs("io_scene_vrmxt.vfx.export_hook", level="WARNING") as logs:
+            apply_vfx_export(context)
+
+        extension = json_dict["extensions"][EXTENSION_VRMXT_SPRITE_PARTICLE]
+        self.assertEqual(len(extension["emitters"]), 1)
+        self.assertEqual(extension["emitters"][0]["name"], "Ok")
+        self.assertTrue(any("emission_rate" in message for message in logs.output))
+
+    def test_apply_vfx_import_logs_unresolved_nodes(self) -> None:
+        from io_scene_vrmxt.vfx.import_hook import apply_vfx_import
+
+        emitters = mock.Mock()
+        settings = SimpleNamespace(emitters=emitters)
+        armature = SimpleNamespace(data=SimpleNamespace(vrmxt_vfx_settings=settings))
+        context = SimpleNamespace(
+            json_dict={
+                "nodes": [{}],
+                "extensions": {
+                    EXTENSION_VRMXT_SPRITE_PARTICLE: {
+                        "specVersion": "1.0",
+                        "emitters": [
+                            {"name": "Missing", "node": 0},
+                            {
+                                "name": "HandSpark",
+                                "node": 0,
+                                "emissionRate": 5.0,
+                            },
+                        ],
+                    }
+                },
+            },
+            armature=armature,
+            node_index_to_bone_name={},
+            node_index_to_object_name={},
+            image_index_to_image={},
+            context=SimpleNamespace(blend_data=SimpleNamespace(objects={})),
+        )
+
+        with self.assertLogs("io_scene_vrmxt.vfx.import_hook", level="WARNING") as logs:
+            apply_vfx_import(context)
+
+        emitters.clear.assert_called_once()
+        emitters.add.assert_not_called()
+        self.assertTrue(any("unresolved node" in message for message in logs.output))
+        self.assertTrue(any("skipped 2 emitter" in message for message in logs.output))
 
 
 if __name__ == "__main__":

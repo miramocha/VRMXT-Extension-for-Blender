@@ -1,22 +1,19 @@
 {
-  "extensionsUsed": ["VRMC_vrm", "VRMXT_vfx"],
+  "extensionsUsed": ["VRMC_vrm", "VRMXT_sprite_particle"],
   "nodes": [{}, {}, {}],
   "extensions": {
-    "VRMXT_vfx": {
+    "VRMXT_sprite_particle": {
       "specVersion": "1.0",
       "emitters": [
         {
           "name": "HandSpark",
-          "type": "particle",
           "node": 1,
-          "particle": {
-            "emissionRate": 20.0,
-            "maxParticles": 32,
-            "lifetime": 0.8,
-            "startSize": 0.04,
-            "startSpeed": 0.2,
-            "startColor": [1.0, 0.85, 0.4, 1.0]
-          }
+          "size": [0.04, 0.04],
+          "color": [1.0, 0.85, 0.4, 1.0],
+          "emissionRate": 20.0,
+          "maxParticles": 32,
+          "lifetime": 0.8,
+          "startSpeed": 0.2
         }
       ]
     }

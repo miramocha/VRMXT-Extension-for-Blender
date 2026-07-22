@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Blender property groups for VRMXT_vfx authoring data."""
+"""Blender property groups for VRMXT_sprite_particle authoring data."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ ATTACHMENT_TYPE_OBJECT = "OBJECT"
 
 _ATTACHMENT_TYPE_ITEMS = (
     (ATTACHMENT_TYPE_BONE, "Bone", "Attach to an armature pose bone"),
-    (ATTACHMENT_TYPE_OBJECT, "Object", "Attach to a scene object"),
+    (ATTACHMENT_TYPE_OBJECT, "Object", "Attach to a scene object / offset Empty"),
 )
 
 try:
@@ -31,7 +31,7 @@ except ImportError:  # pragma: no cover - exercised only outside Blender
 else:
 
     class VrmxtVfxEmitterItem(PropertyGroup):  # type: ignore[misc]
-        """Single portable VFX emitter stored on the armature."""
+        """Single portable sprite-particle emitter stored on the armature."""
 
         name: StringProperty(  # type: ignore[valid-type]
             name="Name",
@@ -50,29 +50,33 @@ else:
         attachment_object: PointerProperty(  # type: ignore[valid-type]
             name="Object",
             type=Object,
-            description="Scene object used as the emitter attachment node",
-        )
-        emitter_type: StringProperty(  # type: ignore[valid-type]
-            name="Type",
-            default="particle",
-        )
-        local_position: FloatVectorProperty(  # type: ignore[valid-type]
-            name="Local Position",
-            size=3,
-            default=(0.0, 0.0, 0.0),
-            description="Offset in node local space (glTF meters, XYZ)",
-        )
-        local_rotation: FloatVectorProperty(  # type: ignore[valid-type]
-            name="Local Rotation",
-            size=4,
-            default=(0.0, 0.0, 0.0, 1.0),
-            description="Orientation in node local space as quaternion XYZW",
+            description=(
+                "Scene object (often an offset Empty under a bone) used as the "
+                "emitter attachment node"
+            ),
         )
         texture: PointerProperty(  # type: ignore[valid-type]
             name="Texture",
             type=Image,
+            description=("Sprite image (mapped through glTF textures on export)"),
+        )
+        size: FloatVectorProperty(  # type: ignore[valid-type]
+            name="Size",
+            size=2,
+            default=(0.05, 0.05),
+            min=0.0001,
+            description="Sprite width and height in meters",
+        )
+        color: FloatVectorProperty(  # type: ignore[valid-type]
+            name="Color",
+            size=4,
+            subtype="COLOR",
+            min=0.0,
+            soft_max=1.0,
+            default=(1.0, 1.0, 1.0, 1.0),
             description=(
-                "Particle billboard image (mapped through glTF textures on export)"
+                "Linear RGBA multiplier; RGB may exceed 1 (HDR). "
+                "Alpha must stay in [0, 1] on export"
             ),
         )
         emission_rate: FloatProperty(  # type: ignore[valid-type]
@@ -90,27 +94,15 @@ else:
             default=1.0,
             min=0.0,
         )
-        start_size: FloatProperty(  # type: ignore[valid-type]
-            name="Start Size",
-            default=0.05,
-            min=0.0,
-        )
         start_speed: FloatProperty(  # type: ignore[valid-type]
             name="Start Speed",
             default=0.1,
             min=0.0,
-        )
-        start_color: FloatVectorProperty(  # type: ignore[valid-type]
-            name="Start Color",
-            size=4,
-            subtype="COLOR",
-            min=0.0,
-            max=1.0,
-            default=(1.0, 1.0, 1.0, 1.0),
+            description="Initial speed along node local +Y, meters per second",
         )
 
     class VrmxtVfxSettings(PropertyGroup):  # type: ignore[misc]
-        """Armature-level VRMXT_vfx emitter collection."""
+        """Armature-level VRMXT_sprite_particle emitter collection."""
 
         emitters: CollectionProperty(  # type: ignore[valid-type]
             type=VrmxtVfxEmitterItem

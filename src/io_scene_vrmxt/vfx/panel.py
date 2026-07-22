@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Armature / VRM sidebar panels for VRMXT_vfx emitters."""
+"""Armature / VRM sidebar panels for VRMXT_sprite_particle emitters."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from typing import ClassVar
 from .ops import (
     VRMXT_OT_add_vfx_emitter,
     VRMXT_OT_clear_vfx_preview,
+    VRMXT_OT_create_vfx_offset_empty,
     VRMXT_OT_move_vfx_emitter,
     VRMXT_OT_rebuild_vfx_preview,
     VRMXT_OT_remove_vfx_emitter,
@@ -137,18 +138,21 @@ def _draw_emitter_details(
     elif attachment_type == ATTACHMENT_TYPE_OBJECT:
         layout.prop(emitter, "attachment_object")
 
-    layout.prop(emitter, "local_position")
-    layout.prop(emitter, "local_rotation")
+    if VRMXT_OT_create_vfx_offset_empty is not None:
+        layout.operator(
+            VRMXT_OT_create_vfx_offset_empty.bl_idname,
+            icon="EMPTY_AXIS",
+        )
 
     box = layout.box()
-    box.label(text="Particle")
+    box.label(text="Sprite Particle")
     box.prop(emitter, "texture")
+    box.prop(emitter, "size")
+    box.prop(emitter, "color")
     box.prop(emitter, "emission_rate")
     box.prop(emitter, "max_particles")
     box.prop(emitter, "lifetime")
-    box.prop(emitter, "start_size")
     box.prop(emitter, "start_speed")
-    box.prop(emitter, "start_color")
 
 
 def _draw_preview_controls(layout: UILayout) -> None:

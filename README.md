@@ -10,7 +10,7 @@ Specs live in [Extended-VRM-Specs](https://github.com/miramocha/Extended-VRM-Spe
 
 | Extension | Import | Export | UI | Notes |
 |-----------|--------|--------|----|-------|
-| `VRMXT_vfx` | JSON → property groups + GeoNodes preview | property groups → JSON | armature UIList | Preview via shared `VRMXT_Particle` node group; export SoT = property groups. |
+| `VRMXT_sprite_particle` | JSON → property groups + GeoNodes preview | property groups → JSON | armature UIList | Flat emitters; offsets via helper Empty; preview via shared `VRMXT_Particle` node group (excluded from export). |
 | `VRMXT_materials_override` | JSON → material store | material store → JSON | readonly Material panel | Schema: `idType`/`id` (+ optional `properties[]`). |
 
 ## Requirements

@@ -33,7 +33,7 @@ class TestMaterialsOverrideCatalogs(unittest.TestCase):
         catalog = find_catalog_by_shader_name("lilToon")
         self.assertIsNotNone(catalog)
         assert catalog is not None
-        self.assertEqual(catalog.display_name, "lilToon")
+        self.assertEqual(catalog.display_name, "lilToon 2.3.4")
         self.assertEqual(catalog.shader_name, "lilToon")
         self.assertEqual(catalog.supported_variants, ("builtin", "urp"))
         self.assertGreaterEqual(len(catalog.common_properties()), 1)
