@@ -145,12 +145,21 @@ else:
             name="Value",
             default=0.0,
         )
+        # Plain float4 for param packs (_GlitterParams1, HSVG, …). Do not use
+        # COLOR here — that clamps / mis-draws non-color vectors.
         value_vector: FloatVectorProperty(  # type: ignore[valid-type]
             name="Value",
             size=4,
+            default=(1.0, 1.0, 1.0, 1.0),
+        )
+        # HDR-capable color swatch for *Color props. No hard max=1 so Unity
+        # HDR channels (e.g. 1.135) survive; soft_max sets picker headroom.
+        value_color: FloatVectorProperty(  # type: ignore[valid-type]
+            name="Color",
+            size=4,
             subtype="COLOR",
-            min=0.0,
-            max=1.0,
+            soft_min=0.0,
+            soft_max=10.0,
             default=(1.0, 1.0, 1.0, 1.0),
         )
         vector_size: IntProperty(  # type: ignore[valid-type]

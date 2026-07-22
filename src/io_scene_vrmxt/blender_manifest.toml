@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "vrmxt"
-version = "0.2.0"
+version = "0.2.2"
 
 name = "VRMXT Extensions"
 tagline = "Optional VRMXT_* authoring for Extended VRM"

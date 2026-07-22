@@ -1,6 +1,6 @@
 [project]
 name = "io-scene-vrmxt"
-version = "0.2.0"
+version = "0.2.2"
 description = "Optional Blender extension for VRMXT_* Extended VRM features"
 readme = "README.md"
 requires-python = ">=3.9"

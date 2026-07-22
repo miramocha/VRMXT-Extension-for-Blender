@@ -23,12 +23,49 @@ from ..format.materials_override import (
     serialize_materials_override,
 )
 from .catalog import CUSTOM_SHADER_ENUM, CatalogProperty, find_catalog_by_shader_name
+from .vector_ui import is_color_vector_property_name
 
 CUSTOM_PROP_KEY = "vrmxt_materials_override"
+
+# Matches FloatVectorProperty defaults on value_vector / value_color.
+_DEFAULT_VEC4 = (1.0, 1.0, 1.0, 1.0)
 
 
 def _settings_of(material: Any) -> Any | None:
     return getattr(material, "vrmxt_materials_override_settings", None)
+
+
+def _as_float4(vec: Any) -> tuple[float, float, float, float]:
+    try:
+        return (float(vec[0]), float(vec[1]), float(vec[2]), float(vec[3]))
+    except (TypeError, ValueError, IndexError):
+        return _DEFAULT_VEC4
+
+
+def _is_default_float4(vec: Any) -> bool:
+    values = _as_float4(vec)
+    return all(abs(values[i] - _DEFAULT_VEC4[i]) < 1e-6 for i in range(4))
+
+
+def migrate_legacy_color_storage(item: Any) -> None:
+    """Copy 0.2.0 *Color values from ``value_vector`` into ``value_color``.
+
+    Pre-``value_color`` blends kept colors in ``value_vector``. The new field
+    stays at its (1,1,1,1) default, so export/UI must migrate once or colors
+    silently become white. Clears ``value_vector`` after copy so a later edit
+    back to white is not overridden by stale legacy data.
+    """
+    name = (getattr(item, "name", "") or "").strip()
+    if getattr(item, "prop_type", "") != "vector":
+        return
+    if not is_color_vector_property_name(name):
+        return
+    color = getattr(item, "value_color", _DEFAULT_VEC4)
+    vector = getattr(item, "value_vector", _DEFAULT_VEC4)
+    if _is_default_float4(color) and not _is_default_float4(vector):
+        migrated = _as_float4(vector)
+        item.value_color = migrated
+        item.value_vector = _DEFAULT_VEC4
 
 
 def apply_catalog_default(item: Any, catalog_prop: CatalogProperty) -> None:
@@ -45,8 +82,12 @@ def apply_catalog_default(item: Any, catalog_prop: CatalogProperty) -> None:
             values = [float(v) for v in default[:4]]
             while len(values) < 4:
                 values.append(1.0 if len(values) == 3 else 0.0)
-            item.value_vector = tuple(values[:4])
+            vec = tuple(values[:4])
             item.vector_size = min(max(len(default), 2), 4)
+            if is_color_vector_property_name(catalog_prop.name):
+                item.value_color = vec
+            else:
+                item.value_vector = vec
     elif catalog_prop.type == "shaderFeature":
         item.value_bool = bool(default) if isinstance(default, bool) else bool(default)
 
@@ -104,8 +145,12 @@ def populate_groups_from_extension(
                 values = [float(v) for v in prop.value[:4]]
                 while len(values) < 4:
                     values.append(0.0)
-                item.value_vector = tuple(values[:4])
+                vec = tuple(values[:4])
                 item.vector_size = min(max(len(prop.value), 2), 4)
+                if is_color_vector_property_name(prop.name):
+                    item.value_color = vec
+                else:
+                    item.value_vector = vec
             elif prop.type == "shaderFeature" and isinstance(prop.value, bool):
                 item.value_bool = prop.value
             elif prop.type == "texture":
@@ -167,7 +212,11 @@ def _property_item_to_format(item: Any) -> MaterialProperty | None:
     if prop_type == "vector":
         size = int(getattr(item, "vector_size", 4))
         size = min(max(size, 2), 4)
-        vec = getattr(item, "value_vector", (0.0, 0.0, 0.0, 0.0))
+        migrate_legacy_color_storage(item)
+        if is_color_vector_property_name(name):
+            vec = _as_float4(getattr(item, "value_color", _DEFAULT_VEC4))
+        else:
+            vec = _as_float4(getattr(item, "value_vector", _DEFAULT_VEC4))
         return MaterialProperty(
             name=name,
             type=prop_type,
@@ -267,6 +316,7 @@ __all__ = [
     "clear_authored_overrides",
     "existing_property_names",
     "groups_to_extension",
+    "migrate_legacy_color_storage",
     "populate_groups_from_extension",
     "populate_groups_from_raw_json",
     "read_extension_dict_for_export",
