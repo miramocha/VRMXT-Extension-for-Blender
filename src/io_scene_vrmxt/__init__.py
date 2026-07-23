@@ -4,7 +4,7 @@
 bl_info = {
     "name": "VRMXT Extensions",
     "author": "Mira Luna",
-    "version": (0, 2, 2),
+    "version": (0, 2, 3),
     "blender": (4, 2, 0),
     "location": "File > Import-Export",
     "description": "Optional VRMXT_* authoring for Extended VRM",

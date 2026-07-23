@@ -87,7 +87,7 @@ if bpy is not None:
 
     class VRMXT_OT_materials_override_add(Operator):
         bl_idname = "vrmxt.materials_override_add"
-        bl_label = "Add Override"
+        bl_label = "Add override"
         bl_description = "Add a Unity materials override slot"
         bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 
@@ -124,7 +124,7 @@ if bpy is not None:
 
     class VRMXT_OT_materials_override_remove(Operator):
         bl_idname = "vrmxt.materials_override_remove"
-        bl_label = "Remove Override"
+        bl_label = "Remove override"
         bl_description = "Remove the active materials override slot"
         bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 
@@ -149,7 +149,7 @@ if bpy is not None:
 
     class VRMXT_OT_materials_override_add_common_props(Operator):
         bl_idname = "vrmxt.materials_override_add_common_props"
-        bl_label = "Add Common Props"
+        bl_label = "Add common props"
         bl_description = "Append catalog properties marked common:true"
         bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 
@@ -199,7 +199,7 @@ if bpy is not None:
 
     class VRMXT_OT_materials_override_add_property(Operator):
         bl_idname = "vrmxt.materials_override_add_property"
-        bl_label = "Add Property"
+        bl_label = "Add property"
         bl_description = "Add a catalog or custom property to the active override"
         bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 
@@ -270,12 +270,12 @@ if bpy is not None:
 
     class VRMXT_OT_materials_override_remove_property(Operator):
         bl_idname = "vrmxt.materials_override_remove_property"
-        bl_label = "Remove Property"
+        bl_label = "Remove property"
         bl_description = "Remove this property row from the override"
         bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 
         property_index: IntProperty(  # type: ignore[valid-type]
-            name="Property Index",
+            name="Property index",
             default=0,
             min=0,
         )

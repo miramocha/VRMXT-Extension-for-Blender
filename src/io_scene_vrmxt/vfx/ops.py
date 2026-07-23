@@ -144,7 +144,7 @@ if bpy is not None:
 
     class VRMXT_OT_add_vfx_emitter(Operator):
         bl_idname = "vrmxt.add_vfx_emitter"
-        bl_label = "Add VFX Emitter"
+        bl_label = "Add VFX emitter"
         bl_description = "Add a VRMXT_sprite_particle emitter"
         bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 
@@ -162,7 +162,7 @@ if bpy is not None:
 
     class VRMXT_OT_remove_vfx_emitter(Operator):
         bl_idname = "vrmxt.remove_vfx_emitter"
-        bl_label = "Remove VFX Emitter"
+        bl_label = "Remove VFX emitter"
         bl_description = "Remove the active VRMXT_sprite_particle emitter"
         bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 
@@ -182,7 +182,7 @@ if bpy is not None:
 
     class VRMXT_OT_move_vfx_emitter(Operator):
         bl_idname = "vrmxt.move_vfx_emitter"
-        bl_label = "Move VFX Emitter"
+        bl_label = "Move VFX emitter"
         bl_description = "Reorder the active VRMXT_sprite_particle emitter"
         bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 
@@ -218,7 +218,7 @@ if bpy is not None:
 
     class VRMXT_OT_create_vfx_offset_empty(Operator):
         bl_idname = "vrmxt.create_vfx_offset_empty"
-        bl_label = "Create Offset Empty"
+        bl_label = "Create offset empty"
         bl_description = (
             "Create an exportable Empty parented to a bone and attach the "
             "active emitter to it (offsets live on the Empty transform)"
@@ -270,7 +270,7 @@ if bpy is not None:
 
     class VRMXT_OT_rebuild_vfx_preview(Operator):
         bl_idname = "vrmxt.rebuild_vfx_preview"
-        bl_label = "Rebuild VFX Preview"
+        bl_label = "Rebuild VFX preview"
         bl_description = (
             "Rebuild Geometry Nodes particle preview helpers from VFX emitters"
         )
@@ -291,7 +291,7 @@ if bpy is not None:
 
     class VRMXT_OT_clear_vfx_preview(Operator):
         bl_idname = "vrmxt.clear_vfx_preview"
-        bl_label = "Clear VFX Preview"
+        bl_label = "Clear VFX preview"
         bl_description = "Remove Geometry Nodes particle preview helpers"
         bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 

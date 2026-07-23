@@ -80,12 +80,12 @@ else:
             ),
         )
         emission_rate: FloatProperty(  # type: ignore[valid-type]
-            name="Emission Rate",
+            name="Emission rate",
             default=10.0,
             min=0.0,
         )
         max_particles: IntProperty(  # type: ignore[valid-type]
-            name="Max Particles",
+            name="Max particles",
             default=64,
             min=1,
         )
@@ -95,7 +95,7 @@ else:
             min=0.0,
         )
         start_speed: FloatProperty(  # type: ignore[valid-type]
-            name="Start Speed",
+            name="Start speed",
             default=0.1,
             min=0.0,
             description="Initial speed along node local +Y, meters per second",
@@ -108,7 +108,7 @@ else:
             type=VrmxtVfxEmitterItem
         )
         active_emitter_index: IntProperty(  # type: ignore[valid-type]
-            name="Active Emitter",
+            name="Active emitter",
             default=0,
         )
 

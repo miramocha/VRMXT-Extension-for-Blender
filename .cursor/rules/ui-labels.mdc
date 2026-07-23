@@ -1,0 +1,55 @@
+---
+description: User-facing UI labels (VRMXT tools and catalogs)
+alwaysApply: true
+---
+
+# User-facing labels
+
+House style for short UI chrome across VRMXT surfaces: Warudo `[Label]` / menus /
+buttons / status, Blender `bl_label` / property `name` / panel text, materials-override
+catalog `displayName`, and autocomplete display strings.
+
+Does **not** apply to ShaderLab names, API identifiers, enum/serialized values,
+file paths, or deslop of long-form docs.
+
+## Casing
+
+Use **sentence case**: capitalize the first word and proper nouns only.
+
+| Do | Don't |
+|----|--------|
+| `Enable materials override` | `Enable Materials Override` |
+| `Export file suffix` | `Export File Suffix` |
+| `Add VFX emitter` | `Add VFX Emitter` |
+| `Apply VRMXT override` | `Apply Vrmxt Override` |
+
+Keep established product/brand casing: **VRMXT**, **Warudo**, **lilToon**,
+**Poiyomi**, **MToon**, **UniVRM**, **Blender**. Acronyms stay uppercase
+(VRM, GLB, URP, BIRP, VFX).
+
+## Voice and length
+
+- Prefer the fewest words that stay unambiguous.
+- Buttons and operators: verb + object (`Apply shader overrides`, `Add common
+  props`, `Clear VFX preview`).
+- Trailing ellipsis (`…` or `...`) only when more input is required before the
+  action completes.
+- No trailing period on labels. No ALL CAPS. No emoji in labels.
+- Help/description / `bl_description` may be full sentences; labels stay scannable.
+
+## Identifier vs label
+
+- ShaderLab / resolve keys stay exact (e.g. `.poiyomi/Poiyomi Toon`, `lilToon`).
+- UI `displayName` / `[Label]` / `bl_label` may be friendlier (`Poiyomi Toon`,
+  `lilToon`) but must not invent a second resolve string.
+- One concept → one label wording across Warudo, Blender, and matching catalogs.
+- **Upstream shader property labels:** materials-override catalog `displayName` for
+  props we do not own (lilToon, Poiyomi, etc.) may match the upstream inspector /
+  ShaderLab wording, including Title Case. Do not sentence-case those to “fix”
+  this rule. This exemption does **not** apply to house chrome we author (Warudo
+  `[Label]`, Blender `bl_label` / panel titles, operators, status).
+
+## Churn
+
+- Follow this rule for **new** labels and labels you already touch.
+- Do not mass-rename existing Title Case labels unless the task asks for it.

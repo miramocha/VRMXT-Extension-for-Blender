@@ -163,7 +163,7 @@ else:
             default=(1.0, 1.0, 1.0, 1.0),
         )
         vector_size: IntProperty(  # type: ignore[valid-type]
-            name="Vector Size",
+            name="Vector size",
             default=4,
             min=2,
             max=4,
@@ -177,7 +177,7 @@ else:
             type=Image,
         )
         texture_index: IntProperty(  # type: ignore[valid-type]
-            name="Texture Index",
+            name="Texture index",
             description="glTF textures[] index from import (used when Image is empty)",
             default=-1,
             min=-1,
@@ -197,21 +197,21 @@ else:
             default="builtin",
         )
         id_type: StringProperty(  # type: ignore[valid-type]
-            name="Id Type",
+            name="ID type",
             default=ID_TYPE_SHADER_NAME,
         )
         material_id: StringProperty(  # type: ignore[valid-type]
-            name="Shader Name",
+            name="Shader name",
             default="",
             description="Exact Unity Shader.Find name (material.id)",
         )
         catalog_key: StringProperty(  # type: ignore[valid-type]
-            name="Catalog Key",
+            name="Catalog key",
             default="",
             description="Vendored catalog stem; empty means Custom",
         )
         shader_enum: EnumProperty(  # type: ignore[valid-type]
-            name="Material / Shader",
+            name="Material / shader",
             items=_shader_enum_items,
             update=_on_shader_enum_update,
         )
@@ -223,7 +223,7 @@ else:
         """Per-material VRMXT_materials_override authoring state."""
 
         raw_json: StringProperty(  # type: ignore[valid-type]
-            name="Materials Override JSON",
+            name="Materials override JSON",
             default="",
         )
         authored: BoolProperty(  # type: ignore[valid-type]
@@ -248,7 +248,7 @@ else:
             type=VrmxtMaterialsOverrideEntry
         )
         active_override_index: IntProperty(  # type: ignore[valid-type]
-            name="Override Index",
+            name="Override index",
             default=0,
         )
         override_slot: EnumProperty(  # type: ignore[valid-type]
