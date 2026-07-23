@@ -142,7 +142,7 @@ if bpy is not None:
 
     class VRMXT_PT_materials_override(Panel):
         bl_idname = "VRMXT_PT_materials_override"
-        bl_label = "Materials Override"
+        bl_label = "Materials override"
         bl_space_type = "PROPERTIES"
         bl_region_type = "WINDOW"
         bl_context = "material"
