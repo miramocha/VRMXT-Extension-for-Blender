@@ -16,3 +16,7 @@ build/
 *.zip
 .DS_Store
 Thumbs.db
+
+# Local sandbox — throwaway experiments (see Sandbox/README.md)
+/Sandbox/*
+!/Sandbox/README.md
