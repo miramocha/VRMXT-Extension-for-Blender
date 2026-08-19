@@ -14,6 +14,8 @@ from ..materials_override.export_hook import (
 from ..materials_override.import_hook import (
     on_vrm1_import as on_materials_import,
 )
+from ..mtoonxt.export_hook import on_vrm1_export as on_mtoonxt_export
+from ..mtoonxt.import_hook import on_vrm1_import as on_mtoonxt_import
 from ..vfx.export_hook import on_vrm1_export as on_vfx_export
 from ..vfx.import_hook import on_vrm1_import as on_vfx_import
 
@@ -80,11 +82,13 @@ def hooks_available() -> bool:
 def _on_vrm1_import(context: Any) -> None:
     on_vfx_import(context)
     on_materials_import(context)
+    on_mtoonxt_import(context)
 
 
 def _on_vrm1_export(context: Any) -> None:
     on_vfx_export(context)
     on_materials_export(context)
+    on_mtoonxt_export(context)
 
 
 def register() -> None:

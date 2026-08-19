@@ -99,17 +99,21 @@ class TestHooksRegistration(unittest.TestCase):
         ):
             on_vfx_export_hook(context)
 
-    def test_combined_import_hook_calls_both_adapters(self) -> None:
+    def test_combined_import_hook_calls_all_adapters(self) -> None:
         context = mock.Mock()
         with (
             mock.patch("io_scene_vrmxt.hooks.vrm1_hooks.on_vfx_import") as vfx_import,
             mock.patch(
                 "io_scene_vrmxt.hooks.vrm1_hooks.on_materials_import"
             ) as materials_import,
+            mock.patch(
+                "io_scene_vrmxt.hooks.vrm1_hooks.on_mtoonxt_import"
+            ) as mtoonxt_import,
         ):
             vrm1_hooks._on_vrm1_import(context)
             vfx_import.assert_called_once_with(context)
             materials_import.assert_called_once_with(context)
+            mtoonxt_import.assert_called_once_with(context)
 
 
 if __name__ == "__main__":

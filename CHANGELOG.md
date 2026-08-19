@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- MToonXT stencil authoring (`VRMC_materials_mtoonxt`): body/outline ops, writer
+  material pointers, import/export on VRM1 hooks. No EEVEE viewport clip.
+
 ## 0.2.2
 
 - Version bump for Blender extension refresh.
