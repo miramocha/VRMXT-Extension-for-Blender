@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.4
+
 - MToonXT stencil panel: warn when a writer is Transparent (or Cutout vs Opaque)
   and a clip reader draws earlier — Unity queue cannot stamp in time.
 - Material PROPERTIES: **VRMXT Material** parent panel. Materials override and
