@@ -70,20 +70,20 @@ def collect_stencil_draw_warnings(
         seen.add(key)
         writer_label = _ALPHA_LABEL[writer_mode]
         reader_label = _ALPHA_LABEL[reader_mode]
-        writer_name = str(getattr(writer, "name", "") or "Writer")
-        reader_name = str(getattr(reader, "name", "") or "Reader")
+        writer_name = str(getattr(writer, "name", "") or "Write material")
+        reader_name = str(getattr(reader, "name", "") or "Clip material")
         if writer_is_self:
             warnings.append(
                 (
-                    f"{reader_name} is {reader_label} and clips this writer",
-                    f"This material is {writer_label}. Stamp may draw too late",
+                    f"{reader_name} is {reader_label} and clips this Write material",
+                    f"This material is {writer_label}. Write may draw too late for clip",
                 )
             )
             return
         warnings.append(
             (
-                f"Writer {writer_name} is {writer_label}",
-                f"This material is {reader_label}. Stamp may draw too late",
+                f"{writer_name} is {writer_label} and set to Write",
+                f"This material is {reader_label}. Write may draw too late for clip",
             )
         )
 
