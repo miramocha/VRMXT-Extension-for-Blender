@@ -6,7 +6,8 @@ from __future__ import annotations
 import contextlib
 from typing import ClassVar
 
-from ..materials_override.panel import VRM_MATERIAL_PANEL_ID
+from ..materials_override.panel import VRMXT_MATERIAL_PANEL_ID
+from .draw_order import collect_stencil_draw_warnings
 from .property_group import body_op_needs_targets, outline_op_needs_targets
 
 try:
@@ -65,8 +66,18 @@ def draw_mtoonxt_layout(layout: UILayout, material: object) -> None:
         )
         box.operator("vrmxt.mtoonxt_add_outline_target", icon="ADD")
 
+    all_materials: list[object] = []
+    if bpy is not None:
+        all_materials = list(bpy.data.materials)
+    for headline, detail in collect_stencil_draw_warnings(material, all_materials):
+        warn = layout.box()
+        row = warn.row()
+        row.alert = True
+        row.label(text=headline, icon="ERROR")
+        warn.label(text=detail)
+
     help_box = layout.box()
-    help_box.label(text="Runtime stencil is Unity / Warudo.")
+    help_box.label(text="Runtime stencil is Unity.")
     help_box.label(text="This panel authors the glTF extras.")
 
 
@@ -79,7 +90,7 @@ if bpy is not None:
         bl_region_type = "WINDOW"
         bl_context = "material"
         bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
-        bl_parent_id = VRM_MATERIAL_PANEL_ID
+        bl_parent_id = VRMXT_MATERIAL_PANEL_ID
 
         @classmethod
         def poll(cls, context: Context) -> bool:

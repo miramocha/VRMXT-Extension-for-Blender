@@ -202,6 +202,20 @@ def listed_writers_have_body_write(
     return True
 
 
+def drop_unresolvable_stencils(
+    extra: VrmcMaterialsMtoonxt,
+    extras_by_index: Sequence[VrmcMaterialsMtoonxt | None],
+) -> None:
+    """Drop clip lists without writers, then dangling outline ``same``."""
+    if not listed_writers_have_body_write(extra.stencil, extras_by_index):
+        extra.stencil = None
+    if extra.outline_stencil is not None and extra.outline_stencil.op == OP_SAME:
+        if extra.stencil is None:
+            extra.outline_stencil = None
+    elif not listed_writers_have_body_write(extra.outline_stencil, extras_by_index):
+        extra.outline_stencil = None
+
+
 def ensure_mtoonxt_extensions_used(json_dict: MutableMapping[str, Json]) -> None:
     ensure_extensions_used(json_dict, EXTENSION_MATERIALS_MTOONXT)
 
@@ -217,6 +231,7 @@ __all__ = [
     "MtoonxtStencil",
     "VrmcMaterialsMtoonxt",
     "clear_mtoonxt_from_material_dict",
+    "drop_unresolvable_stencils",
     "ensure_mtoonxt_extensions_used",
     "listed_writers_have_body_write",
     "material_has_sibling_mtoon",

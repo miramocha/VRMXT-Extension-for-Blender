@@ -36,13 +36,30 @@ else:
         (OP_INSIDE, "Clip inside", "Draw only where listed writers covered"),
         (OP_OUTSIDE, "Clip outside", "Skip pixels listed writers covered"),
     )
-    _OUTLINE_OP_ITEMS = (
-        (OUTLINE_OP_OFF, "Off", "No outline stencil"),
-        (OP_SAME, "Same as body", "Copy compiled body stencil"),
-        (OP_WRITE, "Write", "Stamp coverage in the outline pass"),
-        (OP_INSIDE, "Clip inside", "Outline only where listed writers covered"),
-        (OP_OUTSIDE, "Clip outside", "Outline skips listed writer coverage"),
-    )
+
+    def _outline_op_items(self, _context: object) -> list[tuple[str, str, str, int]]:
+        items: list[tuple[str, str, str, int]] = [
+            (OUTLINE_OP_OFF, "Off", "No outline stencil", 0),
+        ]
+        if getattr(self, "body_op", BODY_OP_OFF) != BODY_OP_OFF:
+            items.append((OP_SAME, "Same as body", "Copy compiled body stencil", 1))
+        items.extend(
+            (
+                (OP_WRITE, "Write", "Stamp coverage in the outline pass", 2),
+                (OP_INSIDE, "Clip inside", "Outline only where listed writers covered", 3),
+                (
+                    OP_OUTSIDE,
+                    "Clip outside",
+                    "Outline skips listed writer coverage",
+                    4,
+                ),
+            )
+        )
+        return items
+
+    def _on_body_op_update(self, _context: object) -> None:
+        if self.body_op == BODY_OP_OFF and self.outline_op == OP_SAME:
+            self.outline_op = OUTLINE_OP_OFF
 
     class VrmxtMtoonxtTarget(PropertyGroup):
         material: PointerProperty(  # type: ignore[valid-type]
@@ -55,11 +72,12 @@ else:
             name="Stencil",
             items=_BODY_OP_ITEMS,
             default=BODY_OP_OFF,
+            update=_on_body_op_update,
         )
         outline_op: EnumProperty(  # type: ignore[valid-type]
             name="Outline stencil",
-            items=_OUTLINE_OP_ITEMS,
-            default=OUTLINE_OP_OFF,
+            items=_outline_op_items,
+            default=0,
         )
         body_targets: CollectionProperty(  # type: ignore[valid-type]
             type=VrmxtMtoonxtTarget,

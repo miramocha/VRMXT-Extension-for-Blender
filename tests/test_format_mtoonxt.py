@@ -19,6 +19,7 @@ from io_scene_vrmxt.format.mtoonxt import (
     OP_WRITE,
     MtoonxtStencil,
     VrmcMaterialsMtoonxt,
+    drop_unresolvable_stencils,
     listed_writers_have_body_write,
     parse_mtoonxt,
     read_mtoonxt_from_material,
@@ -113,6 +114,38 @@ class TestFormatMtoonxt(unittest.TestCase):
         self.assertTrue(listed_writers_have_body_write(extras[0].stencil, extras))
         extras[1] = VrmcMaterialsMtoonxt()
         self.assertFalse(listed_writers_have_body_write(extras[0].stencil, extras))
+
+    def test_drop_outline_same_without_body(self) -> None:
+        extra = VrmcMaterialsMtoonxt(
+            stencil=None,
+            outline_stencil=MtoonxtStencil(op=OP_SAME),
+        )
+        drop_unresolvable_stencils(extra, [extra])
+        self.assertIsNone(extra.stencil)
+        self.assertIsNone(extra.outline_stencil)
+
+    def test_drop_outline_same_after_invalid_body_clip(self) -> None:
+        extras: list[VrmcMaterialsMtoonxt | None] = [None, None]
+        extras[0] = VrmcMaterialsMtoonxt(
+            stencil=MtoonxtStencil(op=OP_INSIDE, materials=[1]),
+            outline_stencil=MtoonxtStencil(op=OP_SAME),
+        )
+        extras[1] = VrmcMaterialsMtoonxt()
+        assert extras[0] is not None
+        drop_unresolvable_stencils(extras[0], extras)
+        self.assertIsNone(extras[0].stencil)
+        self.assertIsNone(extras[0].outline_stencil)
+
+    def test_keep_outline_same_with_body_write(self) -> None:
+        extra = VrmcMaterialsMtoonxt(
+            stencil=MtoonxtStencil(op=OP_WRITE),
+            outline_stencil=MtoonxtStencil(op=OP_SAME),
+        )
+        drop_unresolvable_stencils(extra, [extra])
+        assert extra.stencil is not None
+        assert extra.outline_stencil is not None
+        self.assertEqual(extra.stencil.op, OP_WRITE)
+        self.assertEqual(extra.outline_stencil.op, OP_SAME)
 
 
 class TestMtoonxtHooks(unittest.TestCase):
@@ -237,6 +270,37 @@ class TestMtoonxtHooks(unittest.TestCase):
         self.assertNotIn(
             EXTENSION_MATERIALS_MTOONXT,
             white_dict.get("extensions", {}),
+        )
+
+    def test_export_skips_outline_same_when_body_is_off(self) -> None:
+        settings = _FakeSettings()
+        settings.outline_op = OP_SAME
+        material = _Mat("Skin", settings)
+        material_dict = {
+            "name": "Skin",
+            "extensions": {EXTENSION_MATERIALS_MTOON: {"specVersion": "1.0"}},
+        }
+        json_dict = {"materials": [material_dict]}
+        context = SimpleNamespace(
+            json_dict=json_dict,
+            material_name_to_index={"Skin": 0},
+        )
+        import io_scene_vrmxt.mtoonxt.export_hook as export_hook
+
+        original = export_hook._find_material_by_name
+
+        def _find(name: str) -> object | None:
+            return material if name == "Skin" else None
+
+        export_hook._find_material_by_name = _find  # type: ignore[assignment]
+        try:
+            apply_mtoonxt_export(context)
+        finally:
+            export_hook._find_material_by_name = original  # type: ignore[assignment]
+
+        self.assertNotIn(
+            EXTENSION_MATERIALS_MTOONXT,
+            material_dict.get("extensions", {}),
         )
 
 

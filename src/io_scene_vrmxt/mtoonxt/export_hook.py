@@ -14,8 +14,8 @@ from ..format.mtoonxt import (
     MtoonxtStencil,
     VrmcMaterialsMtoonxt,
     clear_mtoonxt_from_material_dict,
+    drop_unresolvable_stencils,
     ensure_mtoonxt_extensions_used,
-    listed_writers_have_body_write,
     material_has_sibling_mtoon,
     write_mtoonxt_to_material_dict,
 )
@@ -102,7 +102,7 @@ def extra_from_blender_material(
         getattr(settings, "outline_targets", None),
         material_name_to_index,
         own_index,
-        allow_same=True,
+        allow_same=body is not None,
     )
     if body is None and outline is None:
         return None
@@ -138,10 +138,7 @@ def apply_mtoonxt_export(context: Any) -> None:
             continue
         extra = extras[material_index]
         if extra is not None:
-            if not listed_writers_have_body_write(extra.stencil, extras):
-                extra.stencil = None
-            if not listed_writers_have_body_write(extra.outline_stencil, extras):
-                extra.outline_stencil = None
+            drop_unresolvable_stencils(extra, extras)
             if extra.stencil is None and extra.outline_stencil is None:
                 extra = None
         if extra is None or not material_has_sibling_mtoon(material_dict):
