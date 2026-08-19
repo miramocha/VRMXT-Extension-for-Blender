@@ -21,7 +21,7 @@ except ImportError:  # pragma: no cover
     UILayout = object  # type: ignore[misc, assignment]
 
 
-VRM_MATERIAL_PANEL_ID = "VRM_PT_vrm_material_property"
+VRMXT_MATERIAL_PANEL_ID = "VRMXT_PT_vrmxt_material_property"
 
 
 def _active_material(context: Context):
@@ -140,6 +140,20 @@ def draw_materials_override_layout(layout: UILayout, material: object) -> None:
 
 if bpy is not None:
 
+    class VRMXT_PT_vrmxt_material_property(Panel):
+        bl_idname = VRMXT_MATERIAL_PANEL_ID
+        bl_label = "VRMXT Material"
+        bl_space_type = "PROPERTIES"
+        bl_region_type = "WINDOW"
+        bl_context = "material"
+
+        @classmethod
+        def poll(cls, context: Context) -> bool:
+            return _active_material(context) is not None
+
+        def draw(self, _context: Context) -> None:
+            return
+
     class VRMXT_PT_materials_override(Panel):
         bl_idname = "VRMXT_PT_materials_override"
         bl_label = "Materials override"
@@ -147,7 +161,7 @@ if bpy is not None:
         bl_region_type = "WINDOW"
         bl_context = "material"
         bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
-        bl_parent_id = VRM_MATERIAL_PANEL_ID
+        bl_parent_id = VRMXT_MATERIAL_PANEL_ID
 
         @classmethod
         def poll(cls, context: Context) -> bool:
@@ -162,8 +176,12 @@ if bpy is not None:
                 return
             draw_materials_override_layout(self.layout, material)
 
-    CLASSES = (VRMXT_PT_materials_override,)
+    CLASSES = (
+        VRMXT_PT_vrmxt_material_property,
+        VRMXT_PT_materials_override,
+    )
 else:  # pragma: no cover
+    VRMXT_PT_vrmxt_material_property = None  # type: ignore[misc, assignment]
     VRMXT_PT_materials_override = None  # type: ignore[misc, assignment]
     CLASSES = ()
 
@@ -184,8 +202,9 @@ def unregister() -> None:
 
 
 __all__ = [
-    "VRM_MATERIAL_PANEL_ID",
+    "VRMXT_MATERIAL_PANEL_ID",
     "VRMXT_PT_materials_override",
+    "VRMXT_PT_vrmxt_material_property",
     "draw_materials_override_layout",
     "register",
     "unregister",

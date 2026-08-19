@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- MToonXT stencil panel: warn when a writer is Transparent (or Cutout vs Opaque)
+  and a clip reader draws earlier — Unity queue cannot stamp in time.
+- Material PROPERTIES: **VRMXT Material** parent panel. Materials override and
+  MToonXT stencil live there, not under VRM Material.
+- MToonXT stencil note: runtime is Unity (no Warudo callout).
+- MToonXT stencil: drop outline `same` when body stencil is missing; hide
+  Same as body while body is Off.
+- MToonXT stencil authoring (`VRMC_materials_mtoonxt`): body/outline ops, writer
+  material pointers, import/export on VRM1 hooks. No EEVEE viewport clip.
+
 ## 0.2.2
 
 - Version bump for Blender extension refresh.
