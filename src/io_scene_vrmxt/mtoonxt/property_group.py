@@ -46,7 +46,12 @@ else:
         items.extend(
             (
                 (OP_WRITE, "Write", "Stamp coverage in the outline pass", 2),
-                (OP_INSIDE, "Clip inside", "Outline only where listed writers covered", 3),
+                (
+                    OP_INSIDE,
+                    "Clip inside",
+                    "Outline only where listed writers covered",
+                    3,
+                ),
                 (
                     OP_OUTSIDE,
                     "Clip outside",

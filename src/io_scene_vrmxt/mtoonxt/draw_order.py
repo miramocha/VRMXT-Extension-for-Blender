@@ -106,9 +106,7 @@ def collect_stencil_draw_warnings(
         other_settings = getattr(other, "vrmxt_mtoonxt_settings", None)
         if other_settings is None:
             continue
-        other_body = str(
-            getattr(other_settings, "body_op", BODY_OP_OFF) or BODY_OP_OFF
-        )
+        other_body = str(getattr(other_settings, "body_op", BODY_OP_OFF) or BODY_OP_OFF)
         other_outline = str(
             getattr(other_settings, "outline_op", OUTLINE_OP_OFF) or OUTLINE_OP_OFF
         )
