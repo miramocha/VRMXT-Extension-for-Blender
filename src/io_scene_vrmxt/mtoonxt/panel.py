@@ -77,8 +77,8 @@ def draw_mtoonxt_layout(layout: UILayout, material: object) -> None:
         warn.label(text=detail)
 
     help_box = layout.box()
-    help_box.label(text="Runtime stencil is Unity.")
-    help_box.label(text="This panel authors the glTF extras.")
+    help_box.label(text="Clip shows in a VRMXT app with MToonXT shaders.")
+    help_box.label(text="This viewport does not clip.")
 
 
 if bpy is not None:

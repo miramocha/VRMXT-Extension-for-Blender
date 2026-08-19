@@ -60,7 +60,7 @@ class TestFormatMaterialsOverride(unittest.TestCase):
         self.assertEqual(entry.material.variant, "urp")
         self.assertIsNotNone(entry.material.provider)
         assert entry.material.provider is not None
-        self.assertEqual(entry.material.provider.id, "com.miramocha.univrmxt")
+        self.assertEqual(entry.material.provider.id, "com.vrmxt.univrmxt")
         self.assertEqual(len(entry.bindings), 1)
         self.assertEqual(entry.bindings[0].target_type, "vector")
         self.assertEqual(len(entry.properties), 2)

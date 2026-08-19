@@ -58,8 +58,8 @@ class TestMtoonxtDrawOrder(unittest.TestCase):
             hair_warn,
             [
                 (
-                    "Writer Brow_Face-NoRim is Transparent",
-                    "This material is Cutout. Stamp may draw too late",
+                    "Brow_Face-NoRim is Transparent and set to Write",
+                    "This material is Cutout. Write may draw too late for clip",
                 )
             ],
         )
@@ -67,8 +67,8 @@ class TestMtoonxtDrawOrder(unittest.TestCase):
             brow_warn,
             [
                 (
-                    "Hair-Highlight is Cutout and clips this writer",
-                    "This material is Transparent. Stamp may draw too late",
+                    "Hair-Highlight is Cutout and clips this Write material",
+                    "This material is Transparent. Write may draw too late for clip",
                 )
             ],
         )
