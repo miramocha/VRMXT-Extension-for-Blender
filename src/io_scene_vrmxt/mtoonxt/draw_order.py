@@ -13,7 +13,7 @@ from .property_group import (
 )
 
 # Unity MToon mapped queues: Opaque 2000, Cutout 2450, Transparent 3000.
-# UniVRMXT only nudges write/inside by a couple of slots inside that mapping.
+# UniVRMXT only nudges write/inside/insideOverlay by a couple of slots inside that mapping.
 _ALPHA_RANK = {
     "OPAQUE": 0,
     "MASK": 1,

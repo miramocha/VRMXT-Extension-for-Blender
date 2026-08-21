@@ -6,7 +6,9 @@ from __future__ import annotations
 import contextlib
 
 from ..format.mtoonxt import (
+    CLIP_OPS,
     OP_INSIDE,
+    OP_INSIDE_OVERLAY,
     OP_OUTSIDE,
     OP_SAME,
     OP_WRITE,
@@ -35,6 +37,11 @@ else:
         (OP_WRITE, "Write", "Stamp coverage"),
         (OP_INSIDE, "Clip inside", "Draw only where listed writers covered"),
         (OP_OUTSIDE, "Clip outside", "Skip pixels listed writers covered"),
+        (
+            OP_INSIDE_OVERLAY,
+            "Clip inside overlay",
+            "Draw only where listed writers covered, even if closer depth exists",
+        ),
     )
 
     def _outline_op_items(self, _context: object) -> list[tuple[str, str, str, int]]:
@@ -57,6 +64,12 @@ else:
                     "Clip outside",
                     "Outline skips listed writer coverage",
                     4,
+                ),
+                (
+                    OP_INSIDE_OVERLAY,
+                    "Clip inside overlay",
+                    "Outline only where listed writers covered, even if closer depth exists",
+                    5,
                 ),
             )
         )
@@ -93,11 +106,11 @@ else:
 
 
 def body_op_needs_targets(op: str) -> bool:
-    return op in (OP_INSIDE, OP_OUTSIDE)
+    return op in CLIP_OPS
 
 
 def outline_op_needs_targets(op: str) -> bool:
-    return op in (OP_INSIDE, OP_OUTSIDE)
+    return op in CLIP_OPS
 
 
 def add_body_target(settings: object, material: object) -> None:

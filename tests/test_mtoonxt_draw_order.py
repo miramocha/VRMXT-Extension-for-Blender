@@ -84,6 +84,17 @@ class TestMtoonxtDrawOrder(unittest.TestCase):
         self.assertEqual(collect_stencil_draw_warnings(iris, [white, iris]), [])
         self.assertEqual(collect_stencil_draw_warnings(white, [white, iris]), [])
 
+    def test_same_cutout_inside_overlay_silent(self) -> None:
+        suit = _material("Swimsuit", alpha_mode="MASK", body_op="write")
+        bone = _material(
+            "Skeleton",
+            alpha_mode="MASK",
+            body_op="insideOverlay",
+            body_targets=[suit],
+        )
+        self.assertEqual(collect_stencil_draw_warnings(bone, [suit, bone]), [])
+        self.assertEqual(collect_stencil_draw_warnings(suit, [suit, bone]), [])
+
     def test_skips_disabled_mtoon(self) -> None:
         brow = _material(
             "Brow", alpha_mode="BLEND", body_op="write", mtoon_enabled=False

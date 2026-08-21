@@ -23,12 +23,13 @@ from ..common.json_util import (
 
 OP_WRITE = "write"
 OP_INSIDE = "inside"
+OP_INSIDE_OVERLAY = "insideOverlay"
 OP_OUTSIDE = "outside"
 OP_SAME = "same"
 
-BODY_OPS = frozenset({OP_WRITE, OP_INSIDE, OP_OUTSIDE})
-OUTLINE_OPS = frozenset({OP_WRITE, OP_INSIDE, OP_OUTSIDE, OP_SAME})
-CLIP_OPS = frozenset({OP_INSIDE, OP_OUTSIDE})
+BODY_OPS = frozenset({OP_WRITE, OP_INSIDE, OP_INSIDE_OVERLAY, OP_OUTSIDE})
+OUTLINE_OPS = frozenset({OP_WRITE, OP_INSIDE, OP_INSIDE_OVERLAY, OP_OUTSIDE, OP_SAME})
+CLIP_OPS = frozenset({OP_INSIDE, OP_INSIDE_OVERLAY, OP_OUTSIDE})
 
 
 @dataclass
@@ -224,6 +225,7 @@ __all__ = [
     "BODY_OPS",
     "CLIP_OPS",
     "OP_INSIDE",
+    "OP_INSIDE_OVERLAY",
     "OP_OUTSIDE",
     "OP_SAME",
     "OP_WRITE",
