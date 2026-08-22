@@ -40,7 +40,9 @@ if bpy is not None:
     class VRMXT_OT_mtoonxt_add_body_target(Operator):
         bl_idname = "vrmxt.mtoonxt_add_body_target"
         bl_label = "Add clip target"
-        bl_description = "Add a writer material for body clip inside, inside overlay, or outside"
+        bl_description = (
+            "Add a writer material for body clip inside, inside overlay, or outside"
+        )
         bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 
         def execute(self, context: Context) -> set[str]:
@@ -71,7 +73,9 @@ if bpy is not None:
     class VRMXT_OT_mtoonxt_add_outline_target(Operator):
         bl_idname = "vrmxt.mtoonxt_add_outline_target"
         bl_label = "Add outline clip target"
-        bl_description = "Add a writer material for outline clip inside, inside overlay, or outside"
+        bl_description = (
+            "Add a writer material for outline clip inside, inside overlay, or outside"
+        )
         bl_options: ClassVar[set[str]] = {"REGISTER", "UNDO"}
 
         def execute(self, context: Context) -> set[str]:
