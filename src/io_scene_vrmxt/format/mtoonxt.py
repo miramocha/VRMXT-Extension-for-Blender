@@ -39,7 +39,7 @@ class MtoonxtStencil:
 
 
 @dataclass
-class VrmcMaterialsMtoonxt:
+class VrmxtMaterialsMtoonxt:
     spec_version: str = SPEC_VERSION_1_0
     stencil: MtoonxtStencil | None = None
     outline_stencil: MtoonxtStencil | None = None
@@ -100,7 +100,7 @@ def parse_mtoonxt(
     *,
     own_index: int | None = None,
     material_count: int | None = None,
-) -> VrmcMaterialsMtoonxt | None:
+) -> VrmxtMaterialsMtoonxt | None:
     if as_str(extension.get("specVersion")) != SPEC_VERSION_1_0:
         return None
     stencil = None
@@ -119,7 +119,7 @@ def parse_mtoonxt(
             own_index=own_index,
             material_count=material_count,
         )
-    return VrmcMaterialsMtoonxt(
+    return VrmxtMaterialsMtoonxt(
         spec_version=SPEC_VERSION_1_0,
         stencil=stencil,
         outline_stencil=outline,
@@ -133,7 +133,7 @@ def serialize_stencil(stencil: MtoonxtStencil) -> dict[str, Json]:
     return result
 
 
-def serialize_mtoonxt(extension: VrmcMaterialsMtoonxt) -> dict[str, Json]:
+def serialize_mtoonxt(extension: VrmxtMaterialsMtoonxt) -> dict[str, Json]:
     result: dict[str, Json] = {"specVersion": extension.spec_version}
     if extension.stencil is not None:
         result["stencil"] = serialize_stencil(extension.stencil)
@@ -144,7 +144,7 @@ def serialize_mtoonxt(extension: VrmcMaterialsMtoonxt) -> dict[str, Json]:
 
 def write_mtoonxt_to_material_dict(
     material_dict: MutableMapping[str, Json],
-    extension: VrmcMaterialsMtoonxt,
+    extension: VrmxtMaterialsMtoonxt,
 ) -> None:
     write_raw_mtoonxt_to_material_dict(material_dict, serialize_mtoonxt(extension))
 
@@ -178,7 +178,7 @@ def read_mtoonxt_from_material(
     *,
     own_index: int | None = None,
     material_count: int | None = None,
-) -> VrmcMaterialsMtoonxt | None:
+) -> VrmxtMaterialsMtoonxt | None:
     extension_dict = get_material_extension(material_dict, EXTENSION_MATERIALS_MTOONXT)
     if extension_dict is None:
         return None
@@ -189,7 +189,7 @@ def read_mtoonxt_from_material(
 
 def listed_writers_have_body_write(
     stencil: MtoonxtStencil | None,
-    extras_by_index: Sequence[VrmcMaterialsMtoonxt | None],
+    extras_by_index: Sequence[VrmxtMaterialsMtoonxt | None],
 ) -> bool:
     if stencil is None or not uses_materials_list(stencil.op) or not stencil.materials:
         return True
@@ -204,8 +204,8 @@ def listed_writers_have_body_write(
 
 
 def drop_unresolvable_stencils(
-    extra: VrmcMaterialsMtoonxt,
-    extras_by_index: Sequence[VrmcMaterialsMtoonxt | None],
+    extra: VrmxtMaterialsMtoonxt,
+    extras_by_index: Sequence[VrmxtMaterialsMtoonxt | None],
 ) -> None:
     """Drop clip lists without writers, then dangling outline ``same``."""
     if not listed_writers_have_body_write(extra.stencil, extras_by_index):
@@ -231,7 +231,7 @@ __all__ = [
     "OP_WRITE",
     "OUTLINE_OPS",
     "MtoonxtStencil",
-    "VrmcMaterialsMtoonxt",
+    "VrmxtMaterialsMtoonxt",
     "clear_mtoonxt_from_material_dict",
     "drop_unresolvable_stencils",
     "ensure_mtoonxt_extensions_used",

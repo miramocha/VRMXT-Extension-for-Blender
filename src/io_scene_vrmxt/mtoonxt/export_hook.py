@@ -12,7 +12,7 @@ from ..format.mtoonxt import (
     OP_SAME,
     OP_WRITE,
     MtoonxtStencil,
-    VrmcMaterialsMtoonxt,
+    VrmxtMaterialsMtoonxt,
     clear_mtoonxt_from_material_dict,
     drop_unresolvable_stencils,
     ensure_mtoonxt_extensions_used,
@@ -86,7 +86,7 @@ def extra_from_blender_material(
     material: Any,
     material_name_to_index: dict[str, int],
     own_index: int,
-) -> VrmcMaterialsMtoonxt | None:
+) -> VrmxtMaterialsMtoonxt | None:
     settings = getattr(material, "vrmxt_mtoonxt_settings", None)
     if settings is None:
         return None
@@ -106,7 +106,7 @@ def extra_from_blender_material(
     )
     if body is None and outline is None:
         return None
-    return VrmcMaterialsMtoonxt(stencil=body, outline_stencil=outline)
+    return VrmxtMaterialsMtoonxt(stencil=body, outline_stencil=outline)
 
 
 def apply_mtoonxt_export(context: Any) -> None:
@@ -119,7 +119,7 @@ def apply_mtoonxt_export(context: Any) -> None:
         getattr(context, "material_name_to_index", {}) or {}
     )
     count = len(materials_raw)
-    extras: list[VrmcMaterialsMtoonxt | None] = [None] * count
+    extras: list[VrmxtMaterialsMtoonxt | None] = [None] * count
 
     for material_name, material_index in name_to_index.items():
         if material_index < 0 or material_index >= count:

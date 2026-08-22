@@ -12,7 +12,7 @@ from ..format.mtoonxt import (
     OP_OUTSIDE,
     OP_SAME,
     OP_WRITE,
-    VrmcMaterialsMtoonxt,
+    VrmxtMaterialsMtoonxt,
 )
 
 BODY_OP_OFF = "OFF"
@@ -193,7 +193,7 @@ def _add_outline(settings: object, material: object) -> None:
 
 def apply_parsed_to_settings(
     settings: object,
-    extra: VrmcMaterialsMtoonxt,
+    extra: VrmxtMaterialsMtoonxt,
     index_to_material: dict[int, object],
 ) -> None:
     settings.body_op = BODY_OP_OFF

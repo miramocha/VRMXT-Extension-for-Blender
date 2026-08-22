@@ -19,7 +19,7 @@ from io_scene_vrmxt.format.mtoonxt import (
     OP_SAME,
     OP_WRITE,
     MtoonxtStencil,
-    VrmcMaterialsMtoonxt,
+    VrmxtMaterialsMtoonxt,
     drop_unresolvable_stencils,
     listed_writers_have_body_write,
     parse_mtoonxt,
@@ -54,6 +54,23 @@ class TestFormatMtoonxt(unittest.TestCase):
         self.assertEqual(iris.outline_stencil.op, OP_SAME)
         assert white.stencil is not None
         self.assertEqual(white.stencil.op, OP_WRITE)
+
+    def test_read_ignores_retired_gltf_key(self) -> None:
+        extra = read_mtoonxt_from_material(
+            {
+                "name": "Face",
+                "extensions": {
+                    "VRMC_materials_mtoon": {"specVersion": "1.0"},
+                    "VRMC_materials_mtoonxt": {
+                        "specVersion": "1.0",
+                        "stencil": {"op": "write"},
+                    },
+                },
+            },
+            own_index=0,
+            material_count=1,
+        )
+        self.assertIsNone(extra)
 
     def test_parse_inside_overlay(self) -> None:
         parsed = parse_mtoonxt(
@@ -113,7 +130,7 @@ class TestFormatMtoonxt(unittest.TestCase):
         self.assertIsNone(parse_mtoonxt({"specVersion": "0.9"}))
 
     def test_serialize_round_trip(self) -> None:
-        extra = VrmcMaterialsMtoonxt(
+        extra = VrmxtMaterialsMtoonxt(
             stencil=MtoonxtStencil(op=OP_INSIDE, materials=[3]),
             outline_stencil=MtoonxtStencil(op=OP_SAME),
         )
@@ -124,7 +141,7 @@ class TestFormatMtoonxt(unittest.TestCase):
         self.assertEqual(serialize_mtoonxt(extra), serialize_mtoonxt(parsed))
 
     def test_serialize_inside_overlay_round_trip(self) -> None:
-        extra = VrmcMaterialsMtoonxt(
+        extra = VrmxtMaterialsMtoonxt(
             stencil=MtoonxtStencil(op=OP_INSIDE_OVERLAY, materials=[0]),
             outline_stencil=MtoonxtStencil(op=OP_SAME),
         )
@@ -136,18 +153,18 @@ class TestFormatMtoonxt(unittest.TestCase):
         self.assertEqual(serialize_mtoonxt(extra), serialize_mtoonxt(parsed))
 
     def test_listed_writers_require_body_write(self) -> None:
-        extras: list[VrmcMaterialsMtoonxt | None] = [None, None]
-        extras[0] = VrmcMaterialsMtoonxt(
+        extras: list[VrmxtMaterialsMtoonxt | None] = [None, None]
+        extras[0] = VrmxtMaterialsMtoonxt(
             stencil=MtoonxtStencil(op=OP_INSIDE, materials=[1])
         )
-        extras[1] = VrmcMaterialsMtoonxt(stencil=MtoonxtStencil(op=OP_WRITE))
+        extras[1] = VrmxtMaterialsMtoonxt(stencil=MtoonxtStencil(op=OP_WRITE))
         assert extras[0] is not None
         self.assertTrue(listed_writers_have_body_write(extras[0].stencil, extras))
-        extras[1] = VrmcMaterialsMtoonxt()
+        extras[1] = VrmxtMaterialsMtoonxt()
         self.assertFalse(listed_writers_have_body_write(extras[0].stencil, extras))
 
     def test_drop_outline_same_without_body(self) -> None:
-        extra = VrmcMaterialsMtoonxt(
+        extra = VrmxtMaterialsMtoonxt(
             stencil=None,
             outline_stencil=MtoonxtStencil(op=OP_SAME),
         )
@@ -156,19 +173,19 @@ class TestFormatMtoonxt(unittest.TestCase):
         self.assertIsNone(extra.outline_stencil)
 
     def test_drop_outline_same_after_invalid_body_clip(self) -> None:
-        extras: list[VrmcMaterialsMtoonxt | None] = [None, None]
-        extras[0] = VrmcMaterialsMtoonxt(
+        extras: list[VrmxtMaterialsMtoonxt | None] = [None, None]
+        extras[0] = VrmxtMaterialsMtoonxt(
             stencil=MtoonxtStencil(op=OP_INSIDE, materials=[1]),
             outline_stencil=MtoonxtStencil(op=OP_SAME),
         )
-        extras[1] = VrmcMaterialsMtoonxt()
+        extras[1] = VrmxtMaterialsMtoonxt()
         assert extras[0] is not None
         drop_unresolvable_stencils(extras[0], extras)
         self.assertIsNone(extras[0].stencil)
         self.assertIsNone(extras[0].outline_stencil)
 
     def test_keep_outline_same_with_body_write(self) -> None:
-        extra = VrmcMaterialsMtoonxt(
+        extra = VrmxtMaterialsMtoonxt(
             stencil=MtoonxtStencil(op=OP_WRITE),
             outline_stencil=MtoonxtStencil(op=OP_SAME),
         )
