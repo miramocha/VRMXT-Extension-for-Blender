@@ -15,6 +15,7 @@ from io_scene_vrmxt.common.constants import (
 )
 from io_scene_vrmxt.format.mtoonxt import (
     OP_INSIDE,
+    OP_INSIDE_OVERLAY,
     OP_SAME,
     OP_WRITE,
     MtoonxtStencil,
@@ -53,6 +54,24 @@ class TestFormatMtoonxt(unittest.TestCase):
         self.assertEqual(iris.outline_stencil.op, OP_SAME)
         assert white.stencil is not None
         self.assertEqual(white.stencil.op, OP_WRITE)
+
+    def test_parse_inside_overlay(self) -> None:
+        parsed = parse_mtoonxt(
+            {
+                "specVersion": "1.0",
+                "stencil": {"op": "insideOverlay", "materials": [0]},
+                "outlineStencil": {"op": "same"},
+            },
+            own_index=1,
+            material_count=2,
+        )
+        self.assertIsNotNone(parsed)
+        assert parsed is not None
+        assert parsed.stencil is not None
+        self.assertEqual(parsed.stencil.op, OP_INSIDE_OVERLAY)
+        self.assertEqual(parsed.stencil.materials, [0])
+        assert parsed.outline_stencil is not None
+        self.assertEqual(parsed.outline_stencil.op, OP_SAME)
 
     def test_parse_skips_invalid_stencil_objects(self) -> None:
         extension = {
@@ -100,6 +119,18 @@ class TestFormatMtoonxt(unittest.TestCase):
         )
         payload = serialize_mtoonxt(extra)
         parsed = parse_mtoonxt(payload, own_index=1, material_count=4)
+        self.assertIsNotNone(parsed)
+        assert parsed is not None
+        self.assertEqual(serialize_mtoonxt(extra), serialize_mtoonxt(parsed))
+
+    def test_serialize_inside_overlay_round_trip(self) -> None:
+        extra = VrmcMaterialsMtoonxt(
+            stencil=MtoonxtStencil(op=OP_INSIDE_OVERLAY, materials=[0]),
+            outline_stencil=MtoonxtStencil(op=OP_SAME),
+        )
+        payload = serialize_mtoonxt(extra)
+        self.assertEqual(payload["stencil"]["op"], OP_INSIDE_OVERLAY)
+        parsed = parse_mtoonxt(payload, own_index=1, material_count=2)
         self.assertIsNotNone(parsed)
         assert parsed is not None
         self.assertEqual(serialize_mtoonxt(extra), serialize_mtoonxt(parsed))
@@ -184,6 +215,42 @@ class TestMtoonxtHooks(unittest.TestCase):
         self.assertEqual(list(iris.vrmxt_mtoonxt_settings.body_targets), [white])
         self.assertEqual(white.vrmxt_mtoonxt_settings.body_op, OP_WRITE)
 
+    def test_import_maps_inside_overlay(self) -> None:
+        bone = SimpleNamespace(vrmxt_mtoonxt_settings=_FakeSettings())
+        suit = SimpleNamespace(vrmxt_mtoonxt_settings=_FakeSettings())
+        context = SimpleNamespace(
+            json_dict={
+                "materials": [
+                    {
+                        "name": "Swimsuit",
+                        "extensions": {
+                            EXTENSION_MATERIALS_MTOON: {"specVersion": "1.0"},
+                            EXTENSION_MATERIALS_MTOONXT: {
+                                "specVersion": "1.0",
+                                "stencil": {"op": "write"},
+                            },
+                        },
+                    },
+                    {
+                        "name": "Skeleton",
+                        "extensions": {
+                            EXTENSION_MATERIALS_MTOON: {"specVersion": "1.0"},
+                            EXTENSION_MATERIALS_MTOONXT: {
+                                "specVersion": "1.0",
+                                "stencil": {"op": "insideOverlay", "materials": [0]},
+                                "outlineStencil": {"op": "same"},
+                            },
+                        },
+                    },
+                ]
+            },
+            material_index_to_material={0: suit, 1: bone},
+        )
+        apply_mtoonxt_import(context)
+        self.assertEqual(bone.vrmxt_mtoonxt_settings.body_op, OP_INSIDE_OVERLAY)
+        self.assertEqual(list(bone.vrmxt_mtoonxt_settings.body_targets), [suit])
+        self.assertEqual(bone.vrmxt_mtoonxt_settings.outline_op, OP_SAME)
+
     def test_export_writes_indices_and_skips_missing_mtoon(self) -> None:
         white_settings = _FakeSettings()
         white_settings.body_op = OP_WRITE
@@ -228,6 +295,47 @@ class TestMtoonxtHooks(unittest.TestCase):
         used = json_dict.get("extensionsUsed")
         assert isinstance(used, list)
         self.assertIn(EXTENSION_MATERIALS_MTOONXT, used)
+
+    def test_export_inside_overlay_writes_op(self) -> None:
+        suit_settings = _FakeSettings()
+        suit_settings.body_op = OP_WRITE
+        bone_settings = _FakeSettings()
+        bone_settings.body_op = OP_INSIDE_OVERLAY
+        bone_settings.outline_op = OP_SAME
+        bone_settings.body_targets = [_Mat("Swimsuit", suit_settings)]
+        bone = _Mat("Skeleton", bone_settings)
+        suit = _Mat("Swimsuit", suit_settings)
+        bone_dict = {
+            "name": "Skeleton",
+            "extensions": {EXTENSION_MATERIALS_MTOON: {"specVersion": "1.0"}},
+        }
+        suit_dict = {
+            "name": "Swimsuit",
+            "extensions": {EXTENSION_MATERIALS_MTOON: {"specVersion": "1.0"}},
+        }
+        json_dict = {"materials": [suit_dict, bone_dict]}
+        context = SimpleNamespace(
+            json_dict=json_dict,
+            material_name_to_index={"Swimsuit": 0, "Skeleton": 1},
+        )
+        import io_scene_vrmxt.mtoonxt.export_hook as export_hook
+
+        original = export_hook._find_material_by_name
+        mapping = {"Skeleton": bone, "Swimsuit": suit}
+
+        def _find(name: str) -> object | None:
+            return mapping.get(name)
+
+        export_hook._find_material_by_name = _find  # type: ignore[assignment]
+        try:
+            apply_mtoonxt_export(context)
+        finally:
+            export_hook._find_material_by_name = original  # type: ignore[assignment]
+
+        bone_ext = bone_dict["extensions"][EXTENSION_MATERIALS_MTOONXT]
+        self.assertEqual(bone_ext["stencil"]["op"], OP_INSIDE_OVERLAY)
+        self.assertEqual(bone_ext["stencil"]["materials"], [0])
+        self.assertEqual(bone_ext["outlineStencil"]["op"], OP_SAME)
 
     def test_export_skips_clip_when_writer_is_not_body_write(self) -> None:
         white_settings = _FakeSettings()

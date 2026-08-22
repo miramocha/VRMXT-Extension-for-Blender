@@ -15,7 +15,7 @@ MToonXT stencil.
 |-----------|--------|--------|----|-------|
 | `VRMXT_sprite_particle` | JSON → property groups + GeoNodes preview | property groups → JSON | armature UIList | Flat emitters; offsets via helper Empty; preview via shared `VRMXT_Particle` node group (excluded from export). |
 | `VRMXT_materials_override` | JSON → material store | material store → JSON | VRMXT Material | Unity slots, catalog shaders, textures. Schema: `idType`/`id` (+ optional `properties[]`). |
-| `VRMC_materials_mtoonxt` | JSON → material stencil ops | material settings → JSON | VRMXT Material | Body/outline `write` / `inside` / `outside` / outline `same`. No EEVEE clip. Warns when a writer is Transparent (or Cutout vs Opaque) and a clip reader would draw earlier. Runtime stencil is Unity. |
+| `VRMC_materials_mtoonxt` | JSON → material stencil ops | material settings → JSON | VRMXT Material | Body/outline `write` / `inside` / `insideOverlay` / `outside` / outline `same`. No EEVEE clip. Warns when a writer is Transparent (or Cutout vs Opaque) and a clip reader would draw earlier. Runtime stencil is Unity. |
 
 ## Requirements
 
