@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Material PROPERTIES panel for VRMC_materials_mtoonxt stencil authoring."""
+"""Material PROPERTIES panel for VRMXT_materials_mtoonxt stencil authoring."""
 
 from __future__ import annotations
 

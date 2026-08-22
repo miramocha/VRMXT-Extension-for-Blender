@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Apply VRMC_materials_mtoonxt stencil data to Blender materials."""
+"""Apply VRMXT_materials_mtoonxt stencil data to Blender materials."""
 
 from __future__ import annotations
 

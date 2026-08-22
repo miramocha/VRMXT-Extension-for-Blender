@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""VRMC_materials_mtoonxt per-material glTF extension parse/serialize."""
+"""VRMXT_materials_mtoonxt per-material glTF extension parse/serialize."""
 
 from __future__ import annotations
 

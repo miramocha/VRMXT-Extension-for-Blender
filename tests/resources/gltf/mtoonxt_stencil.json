@@ -4,7 +4,7 @@
       "name": "Iris",
       "extensions": {
         "VRMC_materials_mtoon": { "specVersion": "1.0" },
-        "VRMC_materials_mtoonxt": {
+        "VRMXT_materials_mtoonxt": {
           "specVersion": "1.0",
           "stencil": { "op": "inside", "materials": [1] },
           "outlineStencil": { "op": "same" }
@@ -15,7 +15,7 @@
       "name": "White",
       "extensions": {
         "VRMC_materials_mtoon": { "specVersion": "1.0" },
-        "VRMC_materials_mtoonxt": {
+        "VRMXT_materials_mtoonxt": {
           "specVersion": "1.0",
           "stencil": { "op": "write" }
         }

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Breaking:** MToonXT glTF key `VRMC_materials_mtoonxt` → `VRMXT_materials_mtoonxt`.
+  Import/export use the new name only.
+
 ## 0.2.4
 
 - MToonXT stencil panel: warn when a writer is Transparent (or Cutout vs Opaque)
@@ -11,7 +14,7 @@
 - MToonXT stencil note: runtime is Unity (no Warudo callout).
 - MToonXT stencil: drop outline `same` when body stencil is missing; hide
   Same as body while body is Off.
-- MToonXT stencil authoring (`VRMC_materials_mtoonxt`): body/outline ops, writer
+- MToonXT stencil authoring (`VRMXT_materials_mtoonxt`): body/outline ops, writer
   material pointers, import/export on VRM1 hooks. No EEVEE viewport clip.
 
 ## 0.2.2

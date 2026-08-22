@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Blender property groups for VRMC_materials_mtoonxt stencil authoring."""
+"""Blender property groups for VRMXT_materials_mtoonxt stencil authoring."""
 
 from __future__ import annotations
 

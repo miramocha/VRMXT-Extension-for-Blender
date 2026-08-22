@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Tests for VRMC_materials_mtoonxt format parsing and serialization."""
+"""Tests for VRMXT_materials_mtoonxt format parsing and serialization."""
 
 from __future__ import annotations
 

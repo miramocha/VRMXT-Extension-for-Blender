@@ -1,7 +1,7 @@
 # VRMXT Extension for Blender
 
 Optional Blender 4.2+ extension that authors and round-trips Extended VRM
-extensions (`VRMXT_*`, plus `VRMC_materials_mtoonxt` extras) on top of
+extensions (`VRMXT_*`) on top of
 [Extended-VRM-Addon-for-Blender](https://github.com/miramocha/Extended-VRM-Addon-for-Blender).
 
 Specs live in [Extended-VRM-Specs](https://github.com/miramocha/Extended-VRM-Specs).
@@ -15,7 +15,7 @@ MToonXT stencil.
 |-----------|--------|--------|----|-------|
 | `VRMXT_sprite_particle` | JSON → property groups + GeoNodes preview | property groups → JSON | armature UIList | Flat emitters; offsets via helper Empty; preview via shared `VRMXT_Particle` node group (excluded from export). |
 | `VRMXT_materials_override` | JSON → material store | material store → JSON | VRMXT Material | Unity slots, catalog shaders, textures. Schema: `idType`/`id` (+ optional `properties[]`). |
-| `VRMC_materials_mtoonxt` | JSON → material stencil ops | material settings → JSON | VRMXT Material | Body/outline `write` / `inside` / `insideOverlay` / `outside` / outline `same`. No EEVEE clip. Warns when a writer is Transparent (or Cutout vs Opaque) and a clip reader would draw earlier. Runtime stencil is Unity. |
+| `VRMXT_materials_mtoonxt` | JSON → material stencil ops | material settings → JSON | VRMXT Material | Body/outline `write` / `inside` / `insideOverlay` / `outside` / outline `same`. No EEVEE clip. Warns when a writer is Transparent (or Cutout vs Opaque) and a clip reader would draw earlier. Runtime stencil is Unity. |
 
 ## Requirements
 

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Operators for VRMC_materials_mtoonxt stencil authoring."""
+"""Operators for VRMXT_materials_mtoonxt stencil authoring."""
 
 from __future__ import annotations
 
