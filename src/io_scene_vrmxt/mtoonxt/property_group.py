@@ -68,7 +68,10 @@ else:
                 (
                     OP_INSIDE_OVERLAY,
                     "Clip inside overlay",
-                    "Outline only where listed writers covered, even if closer depth exists",
+                    (
+                        "Outline only where listed writers covered,"
+                        " even if closer depth exists"
+                    ),
                     5,
                 ),
             )
