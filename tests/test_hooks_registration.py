@@ -122,8 +122,17 @@ class TestUserExtensionDispatch(unittest.TestCase):
     def test_pre_save_hook_builds_export_shim(self) -> None:
         json_chunk: dict = {"materials": []}
         buffer0 = bytearray(b"ab")
-        armature = SimpleNamespace()
-        with mock.patch("io_scene_vrmxt.hooks.vrm1_hooks._on_vrm1_export") as dispatch:
+        scene = SimpleNamespace(name="Scene")
+        armature = SimpleNamespace(name="Armature", users_scene=(scene,))
+        material = SimpleNamespace(name="Mat")
+        mesh = SimpleNamespace(name="Mesh")
+        with (
+            mock.patch("io_scene_vrmxt.hooks.vrm1_hooks._on_vrm1_export") as dispatch,
+            mock.patch(
+                "io_scene_vrmxt.hooks.vrm1_hooks.sync_bvt_scene_to_vrmxt",
+                return_value=True,
+            ) as sync_bvt,
+        ):
             Vrm1ExportUserExtension().pre_save_hook(
                 json_chunk,
                 buffer0,
@@ -131,14 +140,19 @@ class TestUserExtensionDispatch(unittest.TestCase):
                 {4: SimpleNamespace(name="Empty")},
                 {1: SimpleNamespace(name="spine")},
                 {0: SimpleNamespace(name="A")},
-                {2: SimpleNamespace(name="Mat")},
-                {},
+                {2: material},
+                {3: mesh},
             )
             ctx = dispatch.call_args[0][0]
+            sync_bvt.assert_called_once_with(scene)
             self.assertIs(ctx.json_dict, json_chunk)
             self.assertIs(ctx.buffer0, buffer0)
+            self.assertIs(ctx.scene, scene)
+            self.assertTrue(ctx.mtoonxt_relationship_graph_authoritative)
             self.assertEqual(ctx.object_name_to_node_index, {"Empty": 4})
             self.assertEqual(ctx.bone_name_to_node_index, {"spine": 1})
+            self.assertIs(ctx.material_index_to_material[2], material)
+            self.assertEqual(ctx.mesh_name_to_index, {"Mesh": 3})
 
 
 if __name__ == "__main__":

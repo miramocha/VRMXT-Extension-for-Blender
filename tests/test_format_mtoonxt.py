@@ -14,26 +14,36 @@ from io_scene_vrmxt.common.constants import (
     SPEC_VERSION_1_0,
 )
 from io_scene_vrmxt.format.mtoonxt import (
+    DEPTH_ALWAYS,
     OP_INSIDE,
     OP_INSIDE_OVERLAY,
     OP_SAME,
     OP_WRITE,
     MtoonxtStencil,
+    MtoonxtStencilRelationship,
     VrmxtMaterialsMtoonxt,
+    coalesce_stencil_relationships,
     drop_unresolvable_stencils,
     listed_writers_have_body_write,
     parse_mtoonxt,
+    parse_stencil_relationships,
     read_mtoonxt_from_material,
     serialize_mtoonxt,
+    write_stencil_relationships,
 )
-from io_scene_vrmxt.mtoonxt.export_hook import apply_mtoonxt_export
+from io_scene_vrmxt.mtoonxt.export_hook import (
+    apply_mtoonxt_export,
+    extra_from_blender_material,
+    register_external_export_provider,
+    unregister_external_export_provider,
+)
 from io_scene_vrmxt.mtoonxt.import_hook import apply_mtoonxt_import
 
 RESOURCES = Path(__file__).resolve().parent / "resources" / "gltf"
 
 
 class TestFormatMtoonxt(unittest.TestCase):
-    def test_parse_fixture(self) -> None:
+    def test_retired_material_fixture_is_ignored(self) -> None:
         payload = json.loads(
             (RESOURCES / "mtoonxt_stencil.json").read_text(encoding="utf-8")
         )
@@ -47,13 +57,9 @@ class TestFormatMtoonxt(unittest.TestCase):
         self.assertIsNotNone(white)
         assert iris is not None and white is not None
         self.assertEqual(iris.spec_version, SPEC_VERSION_1_0)
-        assert iris.stencil is not None
-        self.assertEqual(iris.stencil.op, OP_INSIDE)
-        self.assertEqual(iris.stencil.materials, [1])
-        assert iris.outline_stencil is not None
-        self.assertEqual(iris.outline_stencil.op, OP_SAME)
-        assert white.stencil is not None
-        self.assertEqual(white.stencil.op, OP_WRITE)
+        self.assertIsNone(iris.stencil)
+        self.assertIsNone(iris.outline_stencil)
+        self.assertIsNone(white.stencil)
 
     def test_read_ignores_retired_gltf_key(self) -> None:
         extra = read_mtoonxt_from_material(
@@ -72,7 +78,7 @@ class TestFormatMtoonxt(unittest.TestCase):
         )
         self.assertIsNone(extra)
 
-    def test_parse_inside_overlay(self) -> None:
+    def test_retired_inside_overlay_is_ignored(self) -> None:
         parsed = parse_mtoonxt(
             {
                 "specVersion": "1.0",
@@ -84,11 +90,8 @@ class TestFormatMtoonxt(unittest.TestCase):
         )
         self.assertIsNotNone(parsed)
         assert parsed is not None
-        assert parsed.stencil is not None
-        self.assertEqual(parsed.stencil.op, OP_INSIDE_OVERLAY)
-        self.assertEqual(parsed.stencil.materials, [0])
-        assert parsed.outline_stencil is not None
-        self.assertEqual(parsed.outline_stencil.op, OP_SAME)
+        self.assertIsNone(parsed.stencil)
+        self.assertIsNone(parsed.outline_stencil)
 
     def test_parse_skips_invalid_stencil_objects(self) -> None:
         extension = {
@@ -100,8 +103,7 @@ class TestFormatMtoonxt(unittest.TestCase):
         self.assertIsNotNone(parsed)
         assert parsed is not None
         self.assertIsNone(parsed.stencil)
-        assert parsed.outline_stencil is not None
-        self.assertEqual(parsed.outline_stencil.op, OP_WRITE)
+        self.assertIsNone(parsed.outline_stencil)
 
     def test_parse_write_with_materials_skipped(self) -> None:
         parsed = parse_mtoonxt(
@@ -140,13 +142,14 @@ class TestFormatMtoonxt(unittest.TestCase):
         assert parsed is not None
         self.assertEqual(serialize_mtoonxt(extra), serialize_mtoonxt(parsed))
 
-    def test_serialize_inside_overlay_round_trip(self) -> None:
+    def test_serializer_omits_retired_material_ops(self) -> None:
         extra = VrmxtMaterialsMtoonxt(
             stencil=MtoonxtStencil(op=OP_INSIDE_OVERLAY, materials=[0]),
             outline_stencil=MtoonxtStencil(op=OP_SAME),
         )
         payload = serialize_mtoonxt(extra)
-        self.assertEqual(payload["stencil"]["op"], OP_INSIDE_OVERLAY)
+        self.assertNotIn("stencil", payload)
+        self.assertNotIn("outlineStencil", payload)
         parsed = parse_mtoonxt(payload, own_index=1, material_count=2)
         self.assertIsNotNone(parsed)
         assert parsed is not None
@@ -195,9 +198,107 @@ class TestFormatMtoonxt(unittest.TestCase):
         self.assertEqual(extra.stencil.op, OP_WRITE)
         self.assertEqual(extra.outline_stencil.op, OP_SAME)
 
+    def test_retired_root_name_is_not_an_alias(self) -> None:
+        document = {
+            "extensions": {
+                "VRMXT_materials_mtoonxt": {
+                    "specVersion": "1.0",
+                    "stencilRelationships": [{"writers": [0], "readers": [1]}],
+                }
+            }
+        }
+        self.assertEqual(parse_stencil_relationships(document, material_count=2), [])
+
+    def test_root_relationship_round_trip_and_defaults(self) -> None:
+        document = {"materials": [{}, {}]}
+        relationship = MtoonxtStencilRelationship(
+            writers=[1],
+            readers=[0],
+            show_writers_through_occluders=True,
+            writers_self_occlude=False,
+            writers_write_color=False,
+            writers_write_depth=False,
+            writer_depth_test=DEPTH_ALWAYS,
+        )
+        write_stencil_relationships(document, [relationship])
+        payload = document["extensions"][EXTENSION_MATERIALS_MTOONXT]
+        self.assertFalse(payload["stencil"][0]["writersWriteColor"])
+        self.assertNotIn("readersWriteDepth", payload["stencil"][0])
+        parsed = parse_stencil_relationships(document, material_count=2)
+        self.assertEqual(parsed, [relationship])
+        self.assertIn(EXTENSION_MATERIALS_MTOONXT, document["extensionsUsed"])
+
+        write_stencil_relationships(document, [relationship, relationship])
+        payload = document["extensions"][EXTENSION_MATERIALS_MTOONXT]
+        self.assertEqual(len(payload["stencil"]), 1)
+
+    def test_equivalent_writer_relationships_coalesce_readers(self) -> None:
+        relationships = coalesce_stencil_relationships(
+            [
+                MtoonxtStencilRelationship(
+                    writers=[0], readers=[1], writers_write_color=False
+                ),
+                MtoonxtStencilRelationship(
+                    writers=[0], readers=[2], writers_write_color=False
+                ),
+            ]
+        )
+        self.assertEqual(len(relationships), 1)
+        self.assertEqual(relationships[0].writers, [0])
+        self.assertEqual(relationships[0].readers, [1, 2])
+        self.assertFalse(relationships[0].writers_write_color)
+
+    def test_root_relationship_skips_invalid_entries_individually(self) -> None:
+        document = {
+            "materials": [{}, {}, {}],
+            "extensions": {
+                EXTENSION_MATERIALS_MTOONXT: {
+                    "specVersion": "1.0",
+                    "stencil": [
+                        {"writers": [0], "readers": [1]},
+                        {"writers": [0], "readers": [0]},
+                        {
+                            "writers": [2],
+                            "readers": [1],
+                            "writersOnlyInsideReaders": True,
+                            "writersOnlyOutsideReaders": True,
+                        },
+                    ],
+                }
+            },
+        }
+        parsed = parse_stencil_relationships(document, material_count=3)
+        self.assertEqual(len(parsed), 1)
+        self.assertEqual(parsed[0].writers, [0])
+        self.assertEqual(parsed[0].readers, [1])
+
 
 class TestMtoonxtHooks(unittest.TestCase):
-    def test_import_maps_writer_pointers(self) -> None:
+    def test_external_provider_overrides_standalone_body(self) -> None:
+        settings = _FakeSettings()
+        settings.body_op = OP_WRITE
+        material = _Mat("Face", settings)
+
+        def provider(_material, _name_to_index, _own_index):
+            return VrmxtMaterialsMtoonxt(
+                stencil=MtoonxtStencil(op=OP_INSIDE, materials=[1])
+            )
+
+        register_external_export_provider(provider)
+        try:
+            extra = extra_from_blender_material(
+                material,
+                {"Face": 0, "Mask": 1},
+                0,
+            )
+        finally:
+            unregister_external_export_provider(provider)
+        self.assertIsNotNone(extra)
+        assert extra is not None and extra.stencil is not None
+        self.assertEqual(extra.stencil.op, OP_INSIDE)
+        self.assertEqual(extra.stencil.materials, [1])
+
+    def test_import_ignores_retired_material_writer_pointers(self) -> None:
         iris = SimpleNamespace(vrmxt_mtoonxt_settings=_FakeSettings())
         white = SimpleNamespace(vrmxt_mtoonxt_settings=_FakeSettings())
         context = SimpleNamespace(
@@ -228,11 +329,11 @@ class TestMtoonxtHooks(unittest.TestCase):
             material_index_to_material={0: iris, 1: white},
         )
         apply_mtoonxt_import(context)
-        self.assertEqual(iris.vrmxt_mtoonxt_settings.body_op, OP_INSIDE)
-        self.assertEqual(list(iris.vrmxt_mtoonxt_settings.body_targets), [white])
-        self.assertEqual(white.vrmxt_mtoonxt_settings.body_op, OP_WRITE)
+        self.assertEqual(iris.vrmxt_mtoonxt_settings.body_op, "OFF")
+        self.assertEqual(list(iris.vrmxt_mtoonxt_settings.body_targets), [])
+        self.assertEqual(white.vrmxt_mtoonxt_settings.body_op, "OFF")
 
-    def test_import_maps_inside_overlay(self) -> None:
+    def test_import_ignores_retired_material_inside_overlay(self) -> None:
         bone = SimpleNamespace(vrmxt_mtoonxt_settings=_FakeSettings())
         suit = SimpleNamespace(vrmxt_mtoonxt_settings=_FakeSettings())
         context = SimpleNamespace(
@@ -264,11 +365,119 @@ class TestMtoonxtHooks(unittest.TestCase):
             material_index_to_material={0: suit, 1: bone},
         )
         apply_mtoonxt_import(context)
-        self.assertEqual(bone.vrmxt_mtoonxt_settings.body_op, OP_INSIDE_OVERLAY)
-        self.assertEqual(list(bone.vrmxt_mtoonxt_settings.body_targets), [suit])
-        self.assertEqual(bone.vrmxt_mtoonxt_settings.outline_op, OP_SAME)
+        self.assertEqual(bone.vrmxt_mtoonxt_settings.body_op, "OFF")
+        self.assertEqual(list(bone.vrmxt_mtoonxt_settings.body_targets), [])
+        self.assertEqual(bone.vrmxt_mtoonxt_settings.outline_op, "OFF")
 
-    def test_export_writes_indices_and_skips_missing_mtoon(self) -> None:
+    def test_external_root_relationship_export_and_import(self) -> None:
+        import io_scene_vrmxt.mtoonxt.export_hook as export_hook
+        import io_scene_vrmxt.mtoonxt.import_hook as import_hook
+
+        relationship = MtoonxtStencilRelationship(
+            writers=[1], readers=[0], show_writers_through_occluders=True
+        )
+        document = {
+            "materials": [
+                {
+                    "name": "Reader",
+                    "extensions": {EXTENSION_MATERIALS_MTOON: {"specVersion": "1.0"}},
+                },
+                {
+                    "name": "Writer",
+                    "extensions": {EXTENSION_MATERIALS_MTOON: {"specVersion": "1.0"}},
+                },
+            ]
+        }
+        export_context = SimpleNamespace(
+            json_dict=document,
+            material_name_to_index={"Reader": 0, "Writer": 1},
+        )
+
+        def provider(_context, _indices):
+            return [relationship]
+
+        received: list[MtoonxtStencilRelationship] = []
+
+        def consumer(_context, values):
+            received.extend(values)
+
+        export_hook.register_external_relationship_export_provider(provider)
+        import_hook.register_external_relationship_import_consumer(consumer)
+        try:
+            export_hook.apply_mtoonxt_export(export_context)
+            import_hook.apply_mtoonxt_import(
+                SimpleNamespace(
+                    json_dict=document,
+                    material_index_to_material={},
+                    scene=None,
+                )
+            )
+        finally:
+            export_hook.unregister_external_relationship_export_provider(provider)
+            import_hook.unregister_external_relationship_import_consumer(consumer)
+        self.assertEqual(received, [relationship])
+
+    def test_authoritative_relationship_graph_ignores_material_settings(self) -> None:
+        import io_scene_vrmxt.mtoonxt.export_hook as export_hook
+
+        writer_settings = _FakeSettings()
+        writer_settings.body_op = OP_WRITE
+        reader_settings = _FakeSettings()
+        reader_settings.body_op = OP_INSIDE
+        writer = _Mat("Writer", writer_settings)
+        reader = _Mat("Reader", reader_settings)
+        reader_settings.body_targets = [writer]
+
+        stale_writer_settings = _FakeSettings()
+        stale_writer_settings.body_op = OP_WRITE
+        stale_reader_settings = _FakeSettings()
+        stale_reader_settings.body_op = OP_INSIDE
+        stale_writer = _Mat("Stale Writer", stale_writer_settings)
+        stale_reader = _Mat("Stale Reader", stale_reader_settings)
+        stale_reader_settings.body_targets = [stale_writer]
+
+        materials = [
+            {
+                "name": material.name,
+                "extensions": {EXTENSION_MATERIALS_MTOON: {"specVersion": "1.0"}},
+            }
+            for material in (writer, reader, stale_writer, stale_reader)
+        ]
+        relationship = MtoonxtStencilRelationship(writers=[0], readers=[1])
+        context = SimpleNamespace(
+            json_dict={"materials": materials},
+            material_name_to_index={
+                material.name: index
+                for index, material in enumerate(
+                    (writer, reader, stale_writer, stale_reader)
+                )
+            },
+            material_index_to_material={
+                index: material
+                for index, material in enumerate(
+                    (writer, reader, stale_writer, stale_reader)
+                )
+            },
+            mtoonxt_relationship_graph_authoritative=True,
+        )
+
+        def provider(_context, _indices):
+            return [relationship]
+
+        export_hook.register_external_relationship_export_provider(provider)
+        try:
+            export_hook.apply_mtoonxt_export(context)
+        finally:
+            export_hook.unregister_external_relationship_export_provider(provider)
+
+        self.assertEqual(
+            parse_stencil_relationships(context.json_dict, material_count=4),
+            [relationship],
+        )
+        for material in materials:
+            self.assertNotIn(EXTENSION_MATERIALS_MTOONXT, material["extensions"])
+
+    def test_export_ignores_legacy_material_authoring(self) -> None:
         white_settings = _FakeSettings()
         white_settings.body_op = OP_WRITE
         iris_settings = _FakeSettings()
@@ -307,13 +516,9 @@ class TestMtoonxtHooks(unittest.TestCase):
             EXTENSION_MATERIALS_MTOONXT,
             no_mtoon.get("extensions", {}),
         )
-        white_ext = with_mtoon["extensions"][EXTENSION_MATERIALS_MTOONXT]
-        self.assertEqual(white_ext["stencil"]["op"], OP_WRITE)
-        used = json_dict.get("extensionsUsed")
-        assert isinstance(used, list)
-        self.assertIn(EXTENSION_MATERIALS_MTOONXT, used)
+        self.assertNotIn(EXTENSION_MATERIALS_MTOONXT, with_mtoon["extensions"])
 
-    def test_export_inside_overlay_writes_op(self) -> None:
+    def test_export_does_not_emit_legacy_inside_overlay(self) -> None:
         suit_settings = _FakeSettings()
         suit_settings.body_op = OP_WRITE
         bone_settings = _FakeSettings()
@@ -349,10 +554,7 @@ class TestMtoonxtHooks(unittest.TestCase):
         finally:
             export_hook._find_material_by_name = original  # type: ignore[assignment]
 
-        bone_ext = bone_dict["extensions"][EXTENSION_MATERIALS_MTOONXT]
-        self.assertEqual(bone_ext["stencil"]["op"], OP_INSIDE_OVERLAY)
-        self.assertEqual(bone_ext["stencil"]["materials"], [0])
-        self.assertEqual(bone_ext["outlineStencil"]["op"], OP_SAME)
+        self.assertNotIn(EXTENSION_MATERIALS_MTOONXT, bone_dict["extensions"])
 
     def test_export_skips_clip_when_writer_is_not_body_write(self) -> None:
         white_settings = _FakeSettings()

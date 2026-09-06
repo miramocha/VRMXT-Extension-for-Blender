@@ -1,14 +1,14 @@
 schema_version = "1.0.0"
 
 id = "vrmxt"
-version = "0.2.6"
+version = "0.3.0"
 
 name = "VRMXT Extensions"
-tagline = "Optional VRMXT_* authoring for Extended VRM"
+tagline = "Author and round-trip Extended VRM metadata"
 maintainer = "Mira Luna"
 type = "add-on"
 
-website = "https://github.com/miramocha/VRMXT-Extension-for-Blender"
+website = "https://github.com/tdw46/VRMXT-Extension-for-Blender"
 
 tags = ["Import-Export", "Material"]
 
@@ -19,4 +19,12 @@ license = ["SPDX:MIT"]
 
 copyright = [
   "2026 Mira Luna",
+  "2026 Beyond Dev (Tyler Walker)",
+]
+
+[build]
+paths_exclude_pattern = [
+  "__pycache__/",
+  "*.pyc",
+  "*.pyo",
 ]

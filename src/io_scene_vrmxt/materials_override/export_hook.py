@@ -120,8 +120,13 @@ def apply_materials_override_export(context: Any) -> None:
         return
 
     wrote_any = False
+    material_index_to_material = dict(
+        getattr(context, "material_index_to_material", {}) or {}
+    )
     for material_name, material_index in context.material_name_to_index.items():
-        material = _find_material_by_name(material_name)
+        material = material_index_to_material.get(material_index)
+        if material is None:
+            material = _find_material_by_name(material_name)
         if material is None:
             continue
         override_dict = read_extension_dict_for_export(material)

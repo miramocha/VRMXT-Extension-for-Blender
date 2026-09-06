@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Register Blender property groups, UI, and VRM export preview omit."""
+"""Register Blender property groups, authoring UI, and export preview omit."""
 
 from __future__ import annotations
 
