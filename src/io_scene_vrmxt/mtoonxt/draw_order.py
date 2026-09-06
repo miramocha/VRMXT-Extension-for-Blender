@@ -5,12 +5,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from ..format.mtoonxt import CLIP_OPS, OP_WRITE
-from .property_group import (
-    BODY_OP_OFF,
-    OUTLINE_OP_OFF,
-    iter_target_materials,
-)
+from .property_group import iter_target_materials
 
 # Unity MToon mapped queues: Opaque 2000, Cutout 2450, Transparent 3000.
 # UniVRMXT only nudges write/inside/insideOverlay by a couple of slots inside
@@ -49,12 +44,8 @@ def writer_draws_after_reader(writer_mode: str, reader_mode: str) -> bool:
 
 def collect_stencil_draw_warnings(
     material: object,
-    all_materials: Sequence[object],
+    stencils: Sequence[object],
 ) -> list[tuple[str, str]]:
-    settings = getattr(material, "vrmxt_mtoonxt_settings", None)
-    if settings is None:
-        return []
-
     warnings: list[tuple[str, str]] = []
     seen: set[tuple[int, int]] = set()
 
@@ -91,37 +82,15 @@ def collect_stencil_draw_warnings(
             )
         )
 
-    body_op = str(getattr(settings, "body_op", BODY_OP_OFF) or BODY_OP_OFF)
-    outline_op = str(getattr(settings, "outline_op", OUTLINE_OP_OFF) or OUTLINE_OP_OFF)
-
-    if body_op in CLIP_OPS:
-        for writer in iter_target_materials(getattr(settings, "body_targets", None)):
-            add_pair(writer, material, writer_is_self=False)
-    if outline_op in CLIP_OPS:
-        for writer in iter_target_materials(getattr(settings, "outline_targets", None)):
-            add_pair(writer, material, writer_is_self=False)
-
-    if body_op != OP_WRITE and outline_op != OP_WRITE:
-        return warnings
-
-    for other in all_materials:
-        if other is material:
-            continue
-        other_settings = getattr(other, "vrmxt_mtoonxt_settings", None)
-        if other_settings is None:
-            continue
-        other_body = str(getattr(other_settings, "body_op", BODY_OP_OFF) or BODY_OP_OFF)
-        other_outline = str(
-            getattr(other_settings, "outline_op", OUTLINE_OP_OFF) or OUTLINE_OP_OFF
-        )
-        if other_body in CLIP_OPS and material in iter_target_materials(
-            getattr(other_settings, "body_targets", None)
-        ):
-            add_pair(material, other, writer_is_self=True)
-        if other_outline in CLIP_OPS and material in iter_target_materials(
-            getattr(other_settings, "outline_targets", None)
-        ):
-            add_pair(material, other, writer_is_self=True)
+    for stencil in stencils:
+        writers = iter_target_materials(getattr(stencil, "writers", None))
+        readers = iter_target_materials(getattr(stencil, "readers", None))
+        if material in writers:
+            for reader in readers:
+                add_pair(material, reader, writer_is_self=True)
+        if material in readers:
+            for writer in writers:
+                add_pair(writer, material, writer_is_self=False)
 
     return warnings
 

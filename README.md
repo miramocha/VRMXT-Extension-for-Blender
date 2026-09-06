@@ -17,25 +17,23 @@ MToonXT stencil.
 |-----------|--------|--------|----|-------|
 | `VRMXT_sprite_particle` | JSON → property groups + GeoNodes preview | property groups → JSON | armature UIList | Flat emitters; offsets via helper Empty; preview via shared `VRMXT_Particle` node group (excluded from export). |
 | `VRMXT_materials_override` | JSON → material store | material store → JSON | VRMXT Material | Unity slots, catalog shaders, textures. Schema: `idType`/`id` (+ optional `properties[]`). |
-| `VRMXT_materials_mtoonxt` | JSON → root stencil graph | Scene settings → JSON | VRMXT Material + Scene | One portable stencil graph controls cross-material presentation, depth tests, and depth publication. No EEVEE clip. Runtime stencil is supplied by a consumer such as UniVRMXT. |
+| `VRMXT_materials_mtoonxt` | JSON → Scene `stencils` | Scene `stencils` → JSON | VRMXT Material + Scene | Root `stencil` graph (writers/readers, comparison, depth). No per-material ops. No EEVEE clip. Runtime stencil is supplied by a consumer such as UniVRMXT. |
 
 ## Requirements
 
 - Blender **4.2** inclusive through **&lt;5.3**
 - [VRM Add-on for Blender](https://github.com/saturday06/VRM-Addon-for-Blender/releases/tag/v4.6.0) **4.6.0+** (VRM 1.0 third-party hooks)
 
-**Beyond VTuber Tools / Beyond VRM Extension Suite is not required.** VRMXT's
-own Material and Scene panels let you configure stencil operations,
-relationships, visibility, and depth settings. The standard VRM importer and
-exporter round-trip these settings without a preview add-on installed.
+VRMXT owns the portable Scene stencil graph. A host that authors a preview or
+alternate UI maps that data into VRMXT properties (or supplies
+`MtoonxtStencil` rows through `register_embedded`). VRMXT does not read host
+RNA. Material and Scene panels author the graph without another add-on.
+Stock VRM import/export round-trips those settings.
 
 ### Optional Blender preview
 
-For an optional visual preview, [Beyond VRM Extension Suite (BVES) on
-Gumroad](https://beyonddev.gumroad.com/l/vrm) has a **v1.0.0 release coming soon**
-with native-in-Blender stencil preview and MToon render queue offset preview.
-These are upcoming preview features, not requirements for VRMXT authoring,
-import, or export. VRMXT does not install, purchase, or enable BVES for you.
+A host may preview stencil and MToon queue offsets in EEVEE. Preview is
+optional. VRMXT does not install or enable a preview host.
 
 ## Install
 
@@ -55,9 +53,11 @@ import, or export. VRMXT does not install, purchase, or enable BVES for you.
 
 The same source tree can be vendored under another Blender extension. In that
 mode, import the vendored package by its nested package name and call
-`integration.register_embedded(...)`. VRMXT still owns and registers its
-portable Scene/Material properties; embedded registration omits only standalone
-panels. The host exposes `Vrm1ImportUserExtension` and
+`integration.register_embedded(...)` with `mtoonxt_stencil_export_provider` /
+`mtoonxt_stencil_import_consumer` when the host supplies extra graph rows.
+VRMXT still owns and registers its portable Scene stencil RNA and other
+material properties; embedded registration omits only standalone panels. The
+host maps its authoring into VRMXT. The host exposes `Vrm1ImportUserExtension` and
 `Vrm1ExportUserExtension` from its top-level package so the official VRM add-on
 discovers them. Existing shared RNA from an enabled standalone copy is reused
 rather than duplicated.

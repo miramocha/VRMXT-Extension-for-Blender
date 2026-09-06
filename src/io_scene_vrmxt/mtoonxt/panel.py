@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Material PROPERTIES panel for VRMXT_materials_mtoonxt stencil authoring."""
+"""Material and Scene PROPERTIES panels for VRMXT_materials_mtoonxt stencils."""
 
 from __future__ import annotations
 
@@ -28,34 +28,32 @@ def _active_material(context: Context):
     return getattr(obj, "active_material", None)
 
 
-def _draw_relationship_materials(layout: UILayout, item: object, side: str) -> None:
+def _draw_stencil_materials(layout: UILayout, item: object, side: str) -> None:
     collection = item.writers if side == "WRITER" else item.readers
     box = layout.box()
     box.label(text="Writers" if side == "WRITER" else "Readers")
     for index, target in enumerate(collection):
         row = box.row(align=True)
         row.prop(target, "material", text="")
-        op = row.operator(
-            "vrmxt.mtoonxt_remove_relationship_material", text="", icon="X"
-        )
+        op = row.operator("vrmxt.mtoonxt_remove_stencil_material", text="", icon="X")
         op.side = side
         op.target_index = index
-    op = box.operator("vrmxt.mtoonxt_add_relationship_material", icon="ADD")
+    op = box.operator("vrmxt.mtoonxt_add_stencil_material", icon="ADD")
     op.side = side
 
 
-def draw_relationship_layout(layout: UILayout, settings: object) -> None:
+def draw_stencil_layout(layout: UILayout, settings: object) -> None:
     row = layout.row(align=True)
-    row.operator("vrmxt.mtoonxt_add_relationship", text="", icon="ADD")
-    row.operator("vrmxt.mtoonxt_remove_relationship", text="", icon="REMOVE")
-    if not settings.relationships:
-        layout.label(text="No stencil relationships")
+    row.operator("vrmxt.mtoonxt_add_stencil", text="", icon="ADD")
+    row.operator("vrmxt.mtoonxt_remove_stencil", text="", icon="REMOVE")
+    if not settings.stencils:
+        layout.label(text="No stencils")
         return
-    row.prop(settings, "relationship_index", text="Relationship")
-    index = min(settings.relationship_index, len(settings.relationships) - 1)
-    item = settings.relationships[index]
-    _draw_relationship_materials(layout, item, "WRITER")
-    _draw_relationship_materials(layout, item, "READER")
+    row.prop(settings, "stencil_index", text="Stencil")
+    index = min(settings.stencil_index, len(settings.stencils) - 1)
+    item = settings.stencils[index]
+    _draw_stencil_materials(layout, item, "WRITER")
+    _draw_stencil_materials(layout, item, "READER")
     layout.prop(item, "comparison")
     layout.prop(item, "show_writers_through_occluders")
     layout.prop(item, "writers_only_inside_readers")
@@ -91,12 +89,12 @@ if bpy is not None:
             material = _active_material(context)
             if material is None:
                 return
-            draw_relationship_layout(
-                self.layout, context.scene.vrmxt_mtoonxt_relationship_settings
+            draw_stencil_layout(
+                self.layout, context.scene.vrmxt_mtoonxt_stencil_settings
             )
 
-    class VRMXT_PT_mtoonxt_stencil_relationships(Panel):
-        bl_idname = "VRMXT_PT_mtoonxt_stencil_relationships"
+    class VRMXT_PT_mtoonxt_scene_stencil(Panel):
+        bl_idname = "VRMXT_PT_mtoonxt_scene_stencil"
         bl_label = "MToonXT stencil"
         bl_space_type = "PROPERTIES"
         bl_region_type = "WINDOW"
@@ -104,21 +102,19 @@ if bpy is not None:
         bl_options: ClassVar[set[str]] = {"DEFAULT_CLOSED"}
 
         def draw(self, context: Context) -> None:
-            settings = getattr(
-                context.scene, "vrmxt_mtoonxt_relationship_settings", None
-            )
+            settings = getattr(context.scene, "vrmxt_mtoonxt_stencil_settings", None)
             if settings is None:
-                self.layout.label(text="MToonXT relationship settings unavailable")
+                self.layout.label(text="MToonXT stencil settings unavailable")
                 return
-            draw_relationship_layout(self.layout, settings)
+            draw_stencil_layout(self.layout, settings)
 
     CLASSES = (
         VRMXT_PT_mtoonxt_stencil,
-        VRMXT_PT_mtoonxt_stencil_relationships,
+        VRMXT_PT_mtoonxt_scene_stencil,
     )
 else:  # pragma: no cover
     VRMXT_PT_mtoonxt_stencil = None  # type: ignore[misc, assignment]
-    VRMXT_PT_mtoonxt_stencil_relationships = None  # type: ignore[misc, assignment]
+    VRMXT_PT_mtoonxt_scene_stencil = None  # type: ignore[misc, assignment]
     CLASSES = ()
 
 
@@ -138,9 +134,9 @@ def unregister() -> None:
 
 
 __all__ = [
+    "VRMXT_PT_mtoonxt_scene_stencil",
     "VRMXT_PT_mtoonxt_stencil",
-    "VRMXT_PT_mtoonxt_stencil_relationships",
-    "draw_relationship_layout",
+    "draw_stencil_layout",
     "register",
     "unregister",
 ]
