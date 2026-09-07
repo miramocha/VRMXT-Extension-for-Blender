@@ -50,14 +50,16 @@ class TestFormatMtoonxt(unittest.TestCase):
                 "name": "Face",
                 "extensions": {
                     "VRMC_materials_mtoon": {"specVersion": "1.0"},
-                    "VRMC_materials_mtoonxt": {
+                    EXTENSION_MATERIALS_MTOONXT: {
                         "specVersion": "1.0",
                         "stencil": {"op": "write"},
                     },
                 },
             }
         )
-        self.assertIsNone(extra)
+        self.assertIsNotNone(extra)
+        assert extra is not None
+        self.assertEqual(serialize_mtoonxt(extra), {"specVersion": SPEC_VERSION_1_0})
 
     def test_retired_inside_overlay_is_ignored(self) -> None:
         parsed = parse_mtoonxt(

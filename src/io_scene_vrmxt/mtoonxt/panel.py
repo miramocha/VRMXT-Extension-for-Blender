@@ -43,6 +43,8 @@ def _draw_stencil_materials(layout: UILayout, item: object, side: str) -> None:
 
 
 def draw_stencil_layout(layout: UILayout, settings: object) -> None:
+    from .property_group import validate_stencils_in_scene
+
     row = layout.row(align=True)
     row.operator("vrmxt.mtoonxt_add_stencil", text="", icon="ADD")
     row.operator("vrmxt.mtoonxt_remove_stencil", text="", icon="REMOVE")
@@ -65,6 +67,9 @@ def draw_stencil_layout(layout: UILayout, settings: object) -> None:
     layout.prop(item, "readers_write_depth")
     layout.prop(item, "writer_depth_test")
     layout.prop(item, "reader_depth_test")
+    scene = getattr(getattr(bpy, "context", None), "scene", None) if bpy else None
+    for message in validate_stencils_in_scene(scene):
+        layout.label(text=message, icon="ERROR")
 
 
 if bpy is not None:
@@ -89,9 +94,11 @@ if bpy is not None:
             material = _active_material(context)
             if material is None:
                 return
-            draw_stencil_layout(
-                self.layout, context.scene.vrmxt_mtoonxt_stencil_settings
-            )
+            settings = getattr(context.scene, "vrmxt_mtoonxt_stencil_settings", None)
+            if settings is None:
+                self.layout.label(text="MToonXT stencil settings unavailable")
+                return
+            draw_stencil_layout(self.layout, settings)
 
     class VRMXT_PT_mtoonxt_scene_stencil(Panel):
         bl_idname = "VRMXT_PT_mtoonxt_scene_stencil"

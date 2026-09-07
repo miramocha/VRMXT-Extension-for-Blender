@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MIT
 """Package version tuple."""
 
-VERSION = (0, 3, 0)
+VERSION = (0, 3, 1)
 
 __all__ = ["VERSION"]

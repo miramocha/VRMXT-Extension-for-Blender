@@ -44,7 +44,7 @@ optional. VRMXT does not install or enable a preview host.
    blender --command extension build --source-dir src/io_scene_vrmxt
    ```
 
-3. Install the generated `vrmxt-0.3.0.zip` through Blender's Extensions UI.
+3. Install the generated `vrmxt-0.3.1.zip` through Blender's Extensions UI.
    Its extension ID is `vrmxt`.
 4. Enable **VRMXT Extensions**. Stock VRM discovers `Vrm1ImportUserExtension` /
    `Vrm1ExportUserExtension` on this add-on's root module.

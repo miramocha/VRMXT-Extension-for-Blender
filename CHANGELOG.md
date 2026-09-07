@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 0.3.1
+
+- Import **replaces** Scene `stencils` (empty `stencil[]` wipes). Hosts that fill
+  Scene RNA should return `[]` from the export provider.
+- Export skips host stencil providers when Scene RNA already has rows. The
+  stencil panel and export log overlapping writer/reader materials.
+
+## 0.3.0
+
 - **Breaking:** the portable MToonXT graph is `MtoonxtStencil` (`stencil[]`
   writers/readers). Per-material body/outline ops, `outlineStencil`, and the
   retired `stencilRelationships` key are ignored. Re-export strips leftover

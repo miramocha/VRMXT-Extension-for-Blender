@@ -105,6 +105,14 @@ else:
 _OWNS_RNA_REGISTRATION = False
 
 
+def _material_key(material: object) -> int:
+    as_pointer = getattr(material, "as_pointer", None)
+    if callable(as_pointer):
+        with contextlib.suppress(ReferenceError, RuntimeError, TypeError):
+            return int(as_pointer())
+    return id(material)
+
+
 def iter_target_materials(collection: object) -> list[object]:
     result: list[object] = []
     if collection is None:
@@ -180,8 +188,8 @@ def validate_stencils_in_scene(scene: object | None = None) -> list[str]:
             errors.append(f"{label} has no writer material.")
         if not readers:
             errors.append(f"{label} has no reader material.")
-        writer_keys = {id(material) for material in writers}
-        if any(id(material) in writer_keys for material in readers):
+        writer_keys = {_material_key(material) for material in writers}
+        if any(_material_key(material) in writer_keys for material in readers):
             errors.append(f"{label} uses the same material as writer and reader.")
         if bool(getattr(item, "writers_only_inside_readers", False)) and bool(
             getattr(item, "writers_only_outside_readers", False)
@@ -203,7 +211,9 @@ def apply_parsed_stencils_to_scene(
     collection = getattr(settings, "stencils", None)
     if collection is None or not hasattr(collection, "add"):
         return
-    first_imported_index = len(collection)
+    if hasattr(collection, "clear"):
+        collection.clear()
+    settings.stencil_index = 0
     for stencil in stencils or ():
         item = collection.add()
         for index in stencil.writers:
@@ -225,8 +235,8 @@ def apply_parsed_stencils_to_scene(
         item.readers_write_depth = stencil.readers_write_depth
         item.writer_depth_test = stencil.writer_depth_test
         item.reader_depth_test = stencil.reader_depth_test
-    if len(collection) > first_imported_index:
-        settings.stencil_index = first_imported_index
+    if collection:
+        settings.stencil_index = 0
 
 
 def register() -> bool:

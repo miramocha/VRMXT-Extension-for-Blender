@@ -48,13 +48,12 @@ def apply_mtoonxt_import(context: Any) -> None:
     material_count = len(materials_raw)
 
     stencils = parse_stencils(json_dict, material_count=material_count)
-    if stencils:
-        apply_parsed_stencils_to_scene(stencils, dict(index_to_material), context)
-        for consumer in tuple(_EXTERNAL_STENCIL_IMPORT_CONSUMERS):
-            try:
-                consumer(context, stencils)
-            except Exception:  # noqa: BLE001 - one host must not abort import
-                logger.exception("VRMXT external stencil consumer failed")
+    apply_parsed_stencils_to_scene(stencils, dict(index_to_material), context)
+    for consumer in tuple(_EXTERNAL_STENCIL_IMPORT_CONSUMERS):
+        try:
+            consumer(context, stencils)
+        except Exception:  # noqa: BLE001 - one host must not abort import
+            logger.exception("VRMXT external stencil consumer failed")
 
 
 def on_vrm1_import(context: Any) -> None:

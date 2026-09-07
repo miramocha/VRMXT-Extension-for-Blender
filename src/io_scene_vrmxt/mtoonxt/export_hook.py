@@ -7,11 +7,11 @@ import logging
 from collections.abc import Callable, Sequence
 from typing import Any
 
+from ..common.constants import EXTENSION_MATERIALS_MTOONXT
 from ..common.json_util import as_dict, as_list
 from ..format.mtoonxt import (
     MtoonxtStencil,
     clear_mtoonxt_from_material_dict,
-    ensure_mtoonxt_extensions_used,
     material_has_sibling_mtoon,
     write_stencil,
 )
@@ -27,9 +27,9 @@ def register_external_stencil_export_provider(
 ) -> None:
     """Register an optional host stencil-graph provider.
 
-    A host can embed this package without duplicating VRMXT property groups.
-    Providers are additive and run after Scene RNA, so a host can supply extra
-    graph rows it already mapped into portable `MtoonxtStencil` values.
+    Scene RNA is the portable graph. A host should map into Scene `stencils` and
+    return an empty sequence (BVT fill-then-`[]`). Providers that return rows are
+    used only when Scene RNA is empty. Do not fill Scene and also return rows.
     """
 
     if provider not in _EXTERNAL_STENCIL_EXPORT_PROVIDERS:
@@ -56,20 +56,28 @@ def apply_mtoonxt_export(context: Any) -> None:
     )
     stencils: list[MtoonxtStencil] = []
     try:
-        from .property_group import stencils_from_scene
+        from .property_group import stencils_from_scene, validate_stencils_in_scene
 
         blender_context = getattr(context, "context", None)
         scene = getattr(context, "scene", None) or getattr(
             blender_context, "scene", None
         )
+        for message in validate_stencils_in_scene(scene):
+            logger.warning("%s", message)
         stencils.extend(stencils_from_scene(name_to_index, scene=scene))
     except Exception:  # noqa: BLE001 - standalone RNA is optional in embedded mode
         logger.debug("VRMXT standalone stencil export unavailable", exc_info=True)
-    for provider in tuple(_EXTERNAL_STENCIL_EXPORT_PROVIDERS):
-        try:
-            stencils.extend(provider(context, name_to_index))
-        except Exception:  # noqa: BLE001 - one host must not abort export
-            logger.exception("VRMXT external stencil provider failed")
+    if not stencils:
+        for provider in tuple(_EXTERNAL_STENCIL_EXPORT_PROVIDERS):
+            try:
+                stencils.extend(provider(context, name_to_index))
+            except Exception:  # noqa: BLE001 - one host must not abort export
+                logger.exception("VRMXT external stencil provider failed")
+    elif _EXTERNAL_STENCIL_EXPORT_PROVIDERS:
+        logger.debug(
+            "VRMXT skipping %s stencil provider(s); Scene RNA already has stencils",
+            len(_EXTERNAL_STENCIL_EXPORT_PROVIDERS),
+        )
 
     mtoon_material_indices = {
         material_index
@@ -91,7 +99,7 @@ def apply_mtoonxt_export(context: Any) -> None:
             continue
         extensions = as_dict(material_dict.get("extensions"))
         extra = (
-            as_dict(extensions.get("VRMXT_materials_mtoonxt")) if extensions else None
+            as_dict(extensions.get(EXTENSION_MATERIALS_MTOONXT)) if extensions else None
         )
         if extra is not None:
             extra.pop("stencil", None)
@@ -100,9 +108,6 @@ def apply_mtoonxt_export(context: Any) -> None:
                 clear_mtoonxt_from_material_dict(material_dict)
 
     write_stencil(json_dict, stencils)
-
-    if stencils:
-        ensure_mtoonxt_extensions_used(json_dict)
 
 
 def on_vrm1_export(context: Any) -> None:
