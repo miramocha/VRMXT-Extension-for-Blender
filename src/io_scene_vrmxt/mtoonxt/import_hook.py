@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Apply VRMXT_materials_mtoonxt stencil data to Blender materials."""
+"""Apply VRMXT_materials_mtoonxt stencil data to Blender Scene properties."""
 
 from __future__ import annotations
 
@@ -9,33 +9,31 @@ from typing import Any
 
 from ..common.json_util import as_list
 from ..format.mtoonxt import (
-    MtoonxtStencilRelationship,
-    parse_stencil_relationships,
+    MtoonxtStencil,
+    parse_stencils,
 )
 from .property_group import (
-    apply_parsed_relationships_to_scene,
+    apply_parsed_stencils_to_scene,
 )
 
 logger = logging.getLogger(__name__)
 
-MtoonxtRelationshipImportConsumer = Callable[
-    [Any, Sequence[MtoonxtStencilRelationship]], None
-]
-_EXTERNAL_RELATIONSHIP_IMPORT_CONSUMERS: list[MtoonxtRelationshipImportConsumer] = []
+MtoonxtStencilImportConsumer = Callable[[Any, Sequence[MtoonxtStencil]], None]
+_EXTERNAL_STENCIL_IMPORT_CONSUMERS: list[MtoonxtStencilImportConsumer] = []
 
 
-def register_external_relationship_import_consumer(
-    consumer: MtoonxtRelationshipImportConsumer,
+def register_external_stencil_import_consumer(
+    consumer: MtoonxtStencilImportConsumer,
 ) -> None:
-    if consumer not in _EXTERNAL_RELATIONSHIP_IMPORT_CONSUMERS:
-        _EXTERNAL_RELATIONSHIP_IMPORT_CONSUMERS.append(consumer)
+    if consumer not in _EXTERNAL_STENCIL_IMPORT_CONSUMERS:
+        _EXTERNAL_STENCIL_IMPORT_CONSUMERS.append(consumer)
 
 
-def unregister_external_relationship_import_consumer(
-    consumer: MtoonxtRelationshipImportConsumer,
+def unregister_external_stencil_import_consumer(
+    consumer: MtoonxtStencilImportConsumer,
 ) -> None:
     try:
-        _EXTERNAL_RELATIONSHIP_IMPORT_CONSUMERS.remove(consumer)
+        _EXTERNAL_STENCIL_IMPORT_CONSUMERS.remove(consumer)
     except ValueError:
         return
 
@@ -49,31 +47,13 @@ def apply_mtoonxt_import(context: Any) -> None:
     index_to_material = getattr(context, "material_index_to_material", {}) or {}
     material_count = len(materials_raw)
 
-    relationships = parse_stencil_relationships(
-        json_dict, material_count=material_count
-    )
-    if relationships:
-        apply_parsed_relationships_to_scene(
-            relationships, dict(index_to_material), context
-        )
-        for consumer in tuple(_EXTERNAL_RELATIONSHIP_IMPORT_CONSUMERS):
-            try:
-                consumer(context, relationships)
-            except Exception:  # noqa: BLE001 - one host must not abort import
-                logger.exception("VRMXT external stencil relationship consumer failed")
-
-    if relationships:
+    stencils = parse_stencils(json_dict, material_count=material_count)
+    apply_parsed_stencils_to_scene(stencils, dict(index_to_material), context)
+    for consumer in tuple(_EXTERNAL_STENCIL_IMPORT_CONSUMERS):
         try:
-            from .property_sync import sync_vrmxt_scene_to_bvt
-
-            blender_context = getattr(context, "context", None)
-            scene = getattr(context, "scene", None) or getattr(
-                blender_context, "scene", None
-            )
-            if scene is not None:
-                sync_vrmxt_scene_to_bvt(scene)
-        except Exception:  # noqa: BLE001 - optional host synchronization
-            logger.exception("VRMXT could not synchronize imported host properties")
+            consumer(context, stencils)
+        except Exception:  # noqa: BLE001 - one host must not abort import
+            logger.exception("VRMXT external stencil consumer failed")
 
 
 def on_vrm1_import(context: Any) -> None:
@@ -84,9 +64,9 @@ def on_vrm1_import(context: Any) -> None:
 
 
 __all__ = [
-    "MtoonxtRelationshipImportConsumer",
+    "MtoonxtStencilImportConsumer",
     "apply_mtoonxt_import",
     "on_vrm1_import",
-    "register_external_relationship_import_consumer",
-    "unregister_external_relationship_import_consumer",
+    "register_external_stencil_import_consumer",
+    "unregister_external_stencil_import_consumer",
 ]

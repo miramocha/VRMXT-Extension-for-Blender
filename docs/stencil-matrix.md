@@ -8,16 +8,17 @@ Keep that document authoritative; do not maintain a competing JSON schema here.
 ## Export ownership
 
 The enabled add-on exposes official `Vrm1ImportUserExtension` and
-`Vrm1ExportUserExtension` classes. Embedded BVT delegates to the same VRMXT package
-and mirrors its authoritative relationships into VRMXT properties. Use the stock
-VRM 1.0 export command: `pre_save_hook` resolves final material indices and writes
-the root `VRMXT_materials_mtoonxt.stencil` graph. No custom exporter
-or post-export patch is required. Import handles frozen JSON mappings/sequences.
+`Vrm1ExportUserExtension` classes. An embedded host maps its authoring into
+VRMXT Scene `stencils` (or returns `Sequence[MtoonxtStencil]` from the export
+provider). Use the stock VRM 1.0 export command: `pre_save_hook` resolves final
+material indices and writes the root `VRMXT_materials_mtoonxt.stencil` graph. No
+custom exporter or post-export patch is required. Import handles frozen JSON
+mappings/sequences.
 
-Equivalent writer/presentation rows coalesce their readers. Export emits only the root
-`stencil` graph, never per-material operations or a second effect. Unrelated stale
-per-material stencil settings are ignored. Non-equivalent multi-writer cases must not
-be silently collapsed.
+Equivalent writer/presentation rows coalesce their readers. Export emits only the
+root `stencil` graph. Leftover per-material `stencil` / `outlineStencil` keys are
+stripped on re-export. Non-equivalent multi-writer cases must not be silently
+collapsed.
 
 ## Matrix coverage
 
@@ -39,9 +40,9 @@ M04 is a separate approved capture set. New recordings are review evidence, not
 blanket conformance. The Unity profile's culling/topology/URP limitations still apply.
 
 Alpha mode, base alpha, textures and double-sidedness remain standard material
-inputs, not extra relationship flags. Turning off depth writes does not itself
-make a surface transparent. Native EEVEE does not provide this preview; BVT's
-True MToon preview is an optional consumer, not an exporter dependency.
+inputs, not extra stencil flags. Turning off depth writes does not itself make a
+surface transparent. Native EEVEE does not provide this preview; a host preview
+is optional and is not an exporter dependency.
 
 The recorded animation uses companion timelines, not VRM animation timing.
 Public review media excludes raw client model/texture assets.

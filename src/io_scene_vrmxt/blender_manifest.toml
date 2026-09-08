@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "vrmxt"
-version = "0.3.0"
+version = "0.3.1"
 
 name = "VRMXT Extensions"
 tagline = "Author and round-trip Extended VRM metadata"

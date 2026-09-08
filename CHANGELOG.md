@@ -2,12 +2,25 @@
 
 ## Unreleased
 
+## 0.3.1
+
+- Import **replaces** Scene `stencils` (empty `stencil[]` wipes). Hosts that fill
+  Scene RNA should return `[]` from the export provider.
+- Export skips host stencil providers when Scene RNA already has rows. The
+  stencil panel and export log overlapping writer/reader materials.
+
+## 0.3.0
+
+- **Breaking:** the portable MToonXT graph is `MtoonxtStencil` (`stencil[]`
+  writers/readers). Per-material body/outline ops, `outlineStencil`, and the
+  retired `stencilRelationships` key are ignored. Re-export strips leftover
+  material stencil ops.
+- **Breaking:** Scene RNA is `vrmxt_mtoonxt_stencil_settings.stencils`. Embedded
+  hosts register `mtoonxt_stencil_export_provider` /
+  `mtoonxt_stencil_import_consumer` and map host authoring into VRMXT.
 - Document all 13 stencil matrix scenarios and the 24 configured/control
   export/import audits; link published review media without claiming full
   visual conformance or changing the portable schema.
-- When Beyond VTuber Tools supplies its authoritative stencil relationship
-  graph, export only that graph and its exact compatibility shorthand instead
-  of leaking unrelated persisted per-material stencil authoring into the VRM.
 
 ## 0.2.6
 
