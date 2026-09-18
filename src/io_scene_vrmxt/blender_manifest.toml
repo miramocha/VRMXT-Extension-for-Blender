@@ -8,7 +8,7 @@ tagline = "Author and round-trip Extended VRM metadata"
 maintainer = "Mira Luna"
 type = "add-on"
 
-website = "https://github.com/tdw46/VRMXT-Extension-for-Blender"
+website = "https://github.com/vrmxt/VRMXT-Extension-for-Blender"
 
 tags = ["Import-Export", "Material"]
 

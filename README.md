@@ -6,7 +6,7 @@ extensions (`VRMXT_*`) on top of stock
 **4.6.0** or later (VRM 1.0 `Vrm1ImportUserExtension` /
 `Vrm1ExportUserExtension` hooks).
 
-Specs live in [Extended-VRM-Specs](https://github.com/miramocha/Extended-VRM-Specs).
+Specs live in [Extended-VRM-Specs](https://github.com/vrmxt/Extended-VRM-Specs).
 
 Material PROPERTIES: parent panel **VRMXT Material** holds materials override and
 MToonXT stencil.
