@@ -15,6 +15,7 @@ from ..materials_override.import_hook import (
 )
 from ..mtoonxt.export_hook import on_vrm1_export as on_mtoonxt_export
 from ..mtoonxt.import_hook import on_vrm1_import as on_mtoonxt_import
+from ..radial_normals.export_hook import on_vrm1_export as on_radial_normals_export
 from ..vfx.export_hook import on_vrm1_export as on_vfx_export
 from ..vfx.import_hook import on_vrm1_import as on_vfx_import
 from .shim import make_export_context, make_import_context
@@ -86,6 +87,7 @@ class Vrm1ExportUserExtension:
             mesh_index_to_mesh,
         )
         _on_vrm1_export(context)
+        on_radial_normals_export(context)
 
 
 __all__ = [
